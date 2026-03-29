@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HOLD</title>
@@ -13,6 +12,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
     <style>
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
 
         body {
             background: #080808;
@@ -84,6 +84,16 @@
         .toggle.on { border-color: #00e87a; }
         .toggle-dot { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: #2a2a2a; transition: transform 0.3s, background 0.3s; }
         .toggle.on .toggle-dot { transform: translateX(17px); background: #00e87a; }
+
+        /* ── Language switch ─────────────────────────────────────────────────── */
+        #lang-switch { display: flex; gap: 4px; }
+        .lang-opt {
+            font-size: 8px; letter-spacing: 0.12em; color: #282828;
+            cursor: pointer; padding: 5px 9px;
+            border: 1px solid #1a1a1a; border-radius: 2px;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .lang-opt.active { color: #e0e0e0; border-color: #444; }
 
         /* ══ GAME ═════════════════════════════════════════════════════════════ */
         #game { position: relative; }
@@ -326,15 +336,15 @@
 
         /* ══ CARD DETAIL MODAL ═══════════════════════════════════════════════ */
         #card-detail {
-            position: absolute; inset: 0; z-index: 70;
+            position: fixed; inset: 0; z-index: 70;
             display: flex; align-items: flex-end; justify-content: center;
             background: rgba(0,0,0,0); pointer-events: none;
             transition: background 0.3s;
-            overflow: hidden; /* prevents inner panel showing as strip when translated off-screen */
+            overflow: hidden;
         }
         #card-detail.open {
             background: rgba(0,0,0,0.72); pointer-events: auto;
-            overflow: visible; /* allow panel to be fully visible when open */
+            overflow: hidden;
         }
         #card-detail-inner {
             width: 100%; max-width: 430px;
@@ -400,6 +410,56 @@
         }
         .perm-btn.afford { color: #5a9040; border-color: #2a3e22; }
         .perm-btn.owned  { color: #00e87a; border-color: #0a2a16; pointer-events: none; }
+
+        /* ══ GOD MODE EFFECTS ════════════════════════════════════════════════ */
+        #god-flash {
+            position: absolute; inset: 0; z-index: 52;
+            pointer-events: none; background: transparent;
+            transition: background 0.12s;
+        }
+        #god-flash.white { background: rgba(255,255,255,0.88); }
+        #god-flash.dark  { background: rgba(0,0,0,0.72); transition: background 0.6s; }
+
+        @keyframes shake {
+            0%,100% { transform: translate(0,0); }
+            15%     { transform: translate(-5px, 3px); }
+            30%     { transform: translate(5px,-4px); }
+            45%     { transform: translate(-4px, 5px); }
+            60%     { transform: translate(4px,-3px); }
+            75%     { transform: translate(-3px, 2px); }
+        }
+        #game.shaking { animation: shake 0.38s ease; }
+
+        /* ══ TUTORIAL OVERLAY ═════════════════════════════════════════════════ */
+        #tutorial {
+            position: absolute; inset: 0; z-index: 88;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center; gap: 0;
+            background: rgba(0,0,0,0.86); transition: opacity 0.55s;
+        }
+        #tutorial.out { opacity: 0; pointer-events: none; }
+        #tut-big   { font-size: 54px; font-weight: 100; letter-spacing: 0.3em; color: #fff; text-indent:0.3em; margin-bottom: 28px; }
+        #tut-msg   {
+            font-size: 12px; letter-spacing: 0.10em; color: rgba(255,255,255,0.38);
+            text-align: center; max-width: 220px; line-height: 1.9;
+            min-height: 44px; transition: opacity 0.35s;
+        }
+        #tut-msg.fade { opacity: 0; }
+        #tut-bar   {
+            width: 32px; height: 1px; background: rgba(255,255,255,0.10);
+            margin: 28px 0 0; position: relative; overflow: hidden;
+        }
+        #tut-bar-fill {
+            position: absolute; left: 0; top: 0; height: 100%;
+            background: rgba(0,232,122,0.55); width: 0%;
+            transition: width linear;
+        }
+        #tut-skip  {
+            position: absolute; bottom: 42px;
+            font-size: 8px; letter-spacing: 0.26em; text-transform: uppercase;
+            color: #222; cursor: pointer; transition: color 0.2s; padding: 10px 20px;
+        }
+        #tut-skip:active { color: #555; }
 
         /* ══ MISSION TOAST (in-game) ═════════════════════════════════════════ */
         #mission-toast {
@@ -469,12 +529,12 @@
 <!-- ══════════════════════ MENU ══════════════════════════════════════════════ -->
 <div id="menu" class="screen">
     <div id="logo">HOLD</div>
-    <div id="tagline">the minimalist market</div>
+    <div id="tagline" data-i18n="tagline">the minimalist market</div>
     <div id="menu-best">Best: $1,000</div>
 
     <div id="menu-streak">
         <span id="streak-num">0</span>
-        <span id="streak-label">day streak</span>
+        <span id="streak-label" data-i18n="streakLabel">day streak</span>
     </div>
 
     <div id="start-wrap">
@@ -486,45 +546,52 @@
 
     <div id="menu-settings">
         <div class="setting" id="snd-btn">
-            <div class="setting-label">sound</div>
+            <div class="setting-label" data-i18n="sound">sound</div>
             <div class="toggle on" id="snd-tog"><div class="toggle-dot"></div></div>
         </div>
         <div class="setting" id="vib-btn">
-            <div class="setting-label">vibration</div>
+            <div class="setting-label" data-i18n="vibration">vibration</div>
             <div class="toggle on" id="vib-tog"><div class="toggle-dot"></div></div>
+        </div>
+        <div class="setting">
+            <div class="setting-label" data-i18n="language">language</div>
+            <div id="lang-switch">
+                <span class="lang-opt active" data-lang="en">EN</span>
+                <span class="lang-opt" data-lang="tr">TR</span>
+            </div>
         </div>
     </div>
     <div id="menu-links">
-        <div id="how-to-btn"  class="menu-link">how to play</div>
-        <div id="daily-btn"   class="menu-link">daily <span id="daily-btn-dot"></span></div>
-        <div id="col-btn"     class="menu-link">collection <span id="col-btn-dot"></span><span id="col-prog" style="font-size:8px;color:#222;letter-spacing:0.1em;margin-left:6px;"></span></div>
+        <div id="how-to-btn"  class="menu-link" data-i18n="howTo">how to play</div>
+        <div id="daily-btn"   class="menu-link"><span data-i18n="daily">daily</span> <span id="daily-btn-dot"></span></div>
+        <div id="col-btn"     class="menu-link"><span data-i18n="collection">collection</span> <span id="col-btn-dot"></span><span id="col-prog" style="font-size:8px;color:#222;letter-spacing:0.1em;margin-left:6px;"></span></div>
     </div>
 </div>
 
 <!-- ══════════════════════ DAILY MISSIONS ════════════════════════════════════ -->
 <div id="daily" class="screen hidden">
     <div id="daily-inner">
-        <div id="daily-title">Daily Missions</div>
-        <div id="daily-subtitle">resets at midnight</div>
+        <div id="daily-title" data-i18n="dailyTitle">Daily Missions</div>
+        <div id="daily-subtitle" data-i18n="dailySubtitle">resets at midnight</div>
         <div id="daily-missions"></div>
         <div id="daily-all-done">
-            <div id="daily-all-done-title">all done</div>
-            <div id="daily-all-done-sub">2× item drop chance unlocked for tomorrow</div>
+            <div id="daily-all-done-title" data-i18n="allDoneTitle">all done</div>
+            <div id="daily-all-done-sub" data-i18n="allDoneSub">2× item drop chance unlocked for tomorrow</div>
         </div>
         <div id="daily-resets"></div>
     </div>
-    <div id="daily-back">← back</div>
+    <div id="daily-back" data-i18n="back">← back</div>
 </div>
 
 <!-- ══════════════════════ COLLECTION ════════════════════════════════════════ -->
 <div id="collection" class="screen hidden">
     <div id="col-inner">
-        <div id="col-title">Collection</div>
+        <div id="col-title" data-i18n="colTitle">Collection</div>
         <div id="col-count"></div>
         <div id="col-grid"></div>
-        <div id="col-empty" style="display:none">no items yet<br>earn GOD MODE to unlock drops</div>
+        <div id="col-empty" style="display:none" data-i18n="colEmpty">no items yet<br>earn GOD MODE to unlock drops</div>
     </div>
-    <div id="col-back">← back</div>
+    <div id="col-back" data-i18n="back">← back</div>
     <div id="card-detail">
         <div id="card-detail-inner">
             <div id="det-rarity"></div>
@@ -532,14 +599,14 @@
             <canvas id="det-canvas"></canvas>
             <div id="det-desc"></div>
             <div id="det-meta"></div>
-            <div id="det-close">close</div>
+            <div id="det-close" data-i18n="close">close</div>
         </div>
     </div>
 </div>
 
 <!-- ══════════════════════ HOW TO PLAY ═══════════════════════════════════════ -->
 <div id="help" class="screen hidden">
-    <div id="help-inner">
+    <div id="help-inner" data-help-content="true">
         <div class="h-title">How to Play</div>
 
         <div class="h-sec">
@@ -578,7 +645,7 @@
             <div class="h-row" style="margin-top:10px"><div class="h-pip" style="background:#333"></div><div class="h-txt" style="color:#333; font-size:10px">All thresholds above are at $1,000 portfolio. At $10K they're ×1.5 harder. At $100K, ×2. At $1M, ×2.5.</div></div>
         </div>
     </div>
-    <div id="help-back">← back</div>
+    <div id="help-back" data-i18n="back">← back</div>
 </div>
 
 <!-- ══════════════════════ GAME ══════════════════════════════════════════════ -->
@@ -599,8 +666,8 @@
     <div id="event"><div id="event-title"></div><div id="event-sub"></div></div>
     <div id="bottom-bar">
         <div id="upg-pills"></div>
-        <div id="status">watching</div>
-        <div id="hint">hold to buy · release to sell</div>
+        <div id="status" data-i18n="watching">watching</div>
+        <div id="hint"></div>
     </div>
 
     <div id="mission-toast">
@@ -636,24 +703,31 @@
             </svg>
         </div>
         <div id="item-drop-card">
-            <div id="drop-new">item dropped</div>
+            <div id="drop-new" data-i18n="itemDropped">item dropped</div>
             <div id="drop-rarity"></div>
             <div id="drop-name"></div>
             <canvas id="drop-mini"></canvas>
             <div id="drop-pnl"></div>
-            <div id="drop-tap">tap to collect</div>
+            <div id="drop-tap" data-i18n="tapToCollect">tap to collect</div>
         </div>
     </div>
     <div id="shop-panel">
         <div id="shop-tabs">
-            <div class="shop-tab active" data-tab="active">active</div>
-            <div class="shop-tab" data-tab="perma">permanent</div>
+            <div class="shop-tab active" data-tab="active" data-i18n="shopActive">active</div>
+            <div class="shop-tab" data-tab="perma" data-i18n="shopPerma">permanent</div>
         </div>
         <div id="shop-items"></div>
         <div id="perma-items" style="display:none"></div>
         <div id="shop-close-btn">close</div>
     </div>
     <div id="danger-bar"></div>
+    <div id="god-flash"></div>
+    <div id="tutorial">
+        <div id="tut-big">HOLD</div>
+        <div id="tut-msg"></div>
+        <div id="tut-bar"><div id="tut-bar-fill"></div></div>
+        <div id="tut-skip" data-i18n="skip">skip</div>
+    </div>
 </div>
 
 <script>
@@ -883,7 +957,56 @@ const SFX = (() => {
         schedArp(); schedPulse();
     }
 
-    return { boot, startMusic, pauseMusic, resumeMusic, playClick, playProfit, playLoss, playCrash, playPump, playSoftDown, playSoftUp };
+    // ── Hold hum — pitch rises with profit ────────────────────────────────
+    let holdHumOsc = null, holdHumGain = null;
+    function startHoldHum() {
+        if (!soundOn || !ready || holdHumOsc) return;
+        holdHumOsc  = AC.createOscillator();
+        holdHumGain = AC.createGain();
+        holdHumOsc.type = 'sine';
+        holdHumOsc.frequency.value = 90;
+        holdHumGain.gain.value = 0;
+        holdHumOsc.connect(holdHumGain); holdHumGain.connect(master);
+        holdHumOsc.start();
+        holdHumGain.gain.linearRampToValueAtTime(0.028, AC.currentTime + 0.28);
+    }
+    function updateHoldHum(ratio) {
+        // ratio = sessionPnl / portfolio, clamped -0.5 → 1
+        if (!holdHumOsc || !ready) return;
+        const r    = Math.max(-0.5, Math.min(1, ratio));
+        const freq = 90 + Math.max(0, r) * 230;
+        const vol  = 0.014 + Math.max(0, r) * 0.048;
+        holdHumOsc.frequency.setTargetAtTime(freq, AC.currentTime, 0.07);
+        holdHumGain.gain.setTargetAtTime(vol,  AC.currentTime, 0.12);
+    }
+    function stopHoldHum() {
+        if (!holdHumOsc || !ready) return;
+        holdHumGain.gain.linearRampToValueAtTime(0, AC.currentTime + 0.18);
+        try { holdHumOsc.stop(AC.currentTime + 0.22); } catch(e) {}
+        holdHumOsc = null; holdHumGain = null;
+    }
+
+    // ── Danger heartbeat ──────────────────────────────────────────────────
+    let _hbTimer = null;
+    function _beatHeart() {
+        if (!soundOn || !ready) return;
+        sub(55, 0.18, 0.13, 38, 0);
+        sub(50, 0.12, 0.10, 36, 0.17);
+    }
+    function startHeartbeat() {
+        if (_hbTimer) return;
+        function beat() {
+            if (!_hbTimer) return; // stopped
+            _beatHeart();
+            _hbTimer = setTimeout(beat, 700);
+        }
+        _hbTimer = setTimeout(beat, 0); // start immediately
+    }
+    function stopHeartbeat() {
+        clearTimeout(_hbTimer); _hbTimer = null;
+    }
+
+    return { boot, startMusic, pauseMusic, resumeMusic, playClick, playProfit, playLoss, playCrash, playPump, playSoftDown, playSoftUp, startHoldHum, updateHoldHum, stopHoldHum, startHeartbeat, stopHeartbeat };
 })();
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -932,7 +1055,7 @@ function launch() {
     startW.classList.remove('pressing');
     vib([30, 15, 80]);
     menuEl.classList.add('hidden');
-    setTimeout(() => { gameEl.classList.remove('hidden'); resetGame(); gameActive = true; SFX.startMusic(); }, 580);
+    setTimeout(() => { gameEl.classList.remove('hidden'); resetGame(); gameActive = true; SFX.startMusic(); showTutorial(); }, 580);
 }
 
 startW.addEventListener('mousedown',   pressStart);
@@ -1171,6 +1294,8 @@ function resetGame() {
     inCrash = false; inBull = false; history = []; activeEvent = false; liquidated = false;
     particles = []; achDisplay = null;
     upg = { turbo: false, freehold: 0, shield: false, safety: false };
+    passives = calcPassives();
+    sessionLiqImmunity = passives.liqImmunity;
     clearDanger();
     resize(); updateUI(); renderShop();
 }
@@ -1212,13 +1337,14 @@ function tick() {
         // Holding fee: 0.05%/s (was 0.02%) — staying in too long bleeds real money
         const holdCost = upg.freehold > 0 ? 0 : (holdTicks / 60) * portfolio * holdFeePct();
         sessionPnl = raw - holdCost;
+        SFX.updateHoldHum(sessionPnl / Math.max(portfolio, 1));
         updateUI();
         // Danger zone threshold — SAFETY NET upgrade pushes it to 60%
         const dangerThresh = upg.safety ? 0.60 : dangerThreshBase();
         if (!liquidated && !dangerZone && sessionPnl < -(portfolio * dangerThresh)) {
             dangerZone = true; dangerTicks = 0;
             document.getElementById('game').classList.add('danger');
-            vib([80, 40, 80]);
+            vib([80, 40, 80]); SFX.startHeartbeat();
         }
         if (dangerZone) {
             dangerTicks++;
@@ -1368,18 +1494,30 @@ function draw() {
             ? Math.min(1, (tot - t) / 12)        // fast fade-in
             : Math.min(1, t / 18);               // smooth fade-out
         if (alpha > 0) {
-            const cy = chartH * 0.44; // sit in chart area, above the line
-            ctx.globalAlpha  = alpha;
-            ctx.textAlign    = 'center';
-            ctx.shadowBlur   = 28; ctx.shadowColor = achDisplay.color;
-            ctx.fillStyle    = achDisplay.color;
-            ctx.font         = '100 40px -apple-system, sans-serif';
+            const isGod = achDisplay.big;
+            const cy    = chartH * (isGod ? 0.42 : 0.44);
+            const fsize = isGod ? 52 : 40;
+            ctx.globalAlpha = alpha;
+            ctx.textAlign   = 'center';
+            ctx.shadowBlur  = isGod ? 48 : 28;
+            ctx.shadowColor = achDisplay.color;
+            ctx.fillStyle   = achDisplay.color;
+            ctx.font        = `100 ${fsize}px -apple-system, sans-serif`;
             ctx.letterSpacing = '0.14em';
             ctx.fillText(achDisplay.label, W / 2, cy);
+            // pnl line
             ctx.font      = '300 10px -apple-system, sans-serif';
-            ctx.fillStyle = 'rgba(255,255,255,0.38)';
+            ctx.fillStyle = isGod ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.38)';
             ctx.shadowBlur = 0;
-            ctx.fillText('+' + fmt(achDisplay.pnl), W / 2, cy + 22);
+            ctx.fillText('+' + fmt(achDisplay.pnl), W / 2, cy + (isGod ? 26 : 22));
+            // GOD MODE sub-glow second pass
+            if (isGod && alpha > 0.5) {
+                ctx.globalAlpha = alpha * 0.18;
+                ctx.font = `100 ${fsize + 14}px -apple-system, sans-serif`;
+                ctx.fillStyle = achDisplay.color;
+                ctx.shadowBlur = 80;
+                ctx.fillText(achDisplay.label, W / 2, cy);
+            }
             ctx.globalAlpha = 1; ctx.shadowBlur = 0;
         }
         if (achDisplay.timer <= 0) achDisplay = null;
@@ -1565,7 +1703,7 @@ function updateUI() {
     if (sessionPnl >= 0) { pEl.textContent=`+${fmt(sessionPnl)}`; pEl.className='val positive'; }
     else { pEl.textContent=`-${fmt(Math.abs(sessionPnl))}`; pEl.className='val negative'; }
     const sEl = document.getElementById('status');
-    sEl.textContent = isHolding ? 'holding' : 'watching';
+    sEl.textContent = isHolding ? S('holding') : S('watching');
     sEl.className   = isHolding ? (sessionPnl>=0?'holding':'loss') : '';
     if (total > bestValue) { bestValue=total; document.getElementById('best-badge').textContent=`Best: ${fmt(bestValue)}`; }
     // Show current market conditions in hint
@@ -1576,16 +1714,29 @@ function updateUI() {
         const fee = Math.round(holdFeePct() * 100 * 10) / 10;
         hEl.textContent = `${lev}x lev · ${sp}% spread · ${fee}%/s fee`;
     } else {
-        hEl.textContent = 'release to sell';
+        hEl.textContent = S('hintRelease');
     }
     updateUpgPills();
 }
 
 // ── Hold / Release ────────────────────────────────────────────────────────────
 function triggerLiquidation() {
+    SFX.stopHoldHum();
+    // Item passive: liq immunity — block one liquidation
+    if (sessionLiqImmunity > 0) {
+        sessionLiqImmunity--;
+        clearDanger();
+        const titleEl = document.getElementById('event-title');
+        const subEl   = document.getElementById('event-sub');
+        titleEl.textContent = 'PROTECTED'; titleEl.style.color = '#ffd700';
+        subEl.textContent   = 'Liquidation blocked by item passive';
+        document.getElementById('event').classList.add('visible');
+        vib([40, 20, 80]); SFX.playProfit();
+        return;
+    }
     liquidated = true;
     isHolding  = false;
-    upg.safety = false; leverage = 1.5;
+    upg.safety = false; leverage = effectiveLeverage();
     const loss = Math.max(sessionPnl, -(portfolio * 0.65));
     portfolio  = Math.max(10, portfolio + loss);
     sessionPnl = 0;
@@ -1609,6 +1760,7 @@ function triggerLiquidation() {
 // ── Danger zone helpers ───────────────────────────────────────────────────────
 function clearDanger() {
     dangerZone = false; dangerTicks = 0;
+    SFX.stopHeartbeat();
     document.getElementById('game').classList.remove('danger');
     document.getElementById('danger-bar').style.transform = 'scaleX(0)';
 }
@@ -1634,37 +1786,55 @@ function showAchLabel(a, pnl) {
 
 function spawnFireworks(a, idx, pnl) {
     const W = canvas.offsetWidth, H = canvas.offsetHeight;
-    // Escalate spectacle by tier index (0–5)
-    const bursts   = 2 + idx;               // 2 … 7
-    const perBurst = 35 + idx * 12;         // 35 … 95
-    const spd      = 3.5 + idx * 0.5;       // 3.5 … 6
+    const bursts   = 2 + idx;
+    const perBurst = 35 + idx * 18;         // GOD MODE: 143 particles/burst
+    const spd      = 3.5 + idx * 0.7;
     for (let b = 0; b < bursts; b++) {
         setTimeout(() => {
-            const bx = W * (0.12 + Math.random() * 0.76);
-            const by = H * (0.06 + Math.random() * 0.36);
+            const bx = W * (0.10 + Math.random() * 0.80);
+            const by = H * (0.05 + Math.random() * 0.40);
             for (let i = 0; i < perBurst; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const s = Math.random() * spd + 1.2;
-                particles.push({ x:bx, y:by, vx:Math.cos(angle)*s, vy:Math.sin(angle)*s - 1.2,
-                    color: Math.random() < 0.55 ? a.color : '#ffffff', r: Math.random()*2.8+0.7, life:1 });
+                const s = Math.random() * spd + 1.5;
+                particles.push({ x:bx, y:by, vx:Math.cos(angle)*s, vy:Math.sin(angle)*s - 1.5,
+                    color: Math.random() < 0.55 ? a.color : '#ffffff', r: Math.random()*3.2+0.8, life:1 });
             }
         }, b * 150);
     }
-    achDisplay = { label: a.label, color: a.color, pnl, timer: 180 + idx * 10 };
+
+    // GOD MODE special effects
+    if (idx >= 5) {
+        const godFlash = document.getElementById('god-flash');
+        const gameDiv  = document.getElementById('game');
+        // Bright white flash
+        godFlash.classList.add('white');
+        setTimeout(() => {
+            godFlash.classList.remove('white');
+            // Then dark dramatic overlay
+            godFlash.classList.add('dark');
+            // Screen shake
+            gameDiv.classList.add('shaking');
+            setTimeout(() => gameDiv.classList.remove('shaking'), 400);
+            // Fade dark out after achievement plays
+            setTimeout(() => godFlash.classList.remove('dark'), 3200);
+        }, 120);
+    }
+
+    achDisplay = { label: a.label, color: a.color, pnl, timer: 180 + idx * 14, big: idx >= 5 };
     if (soundOn) {
         SFX.playProfit();
         if (idx >= 3) setTimeout(() => SFX.playProfit(), 260);
-        if (idx >= 5) setTimeout(() => SFX.playProfit(), 520);
+        if (idx >= 4) setTimeout(() => SFX.playProfit(), 520);
+        if (idx >= 5) setTimeout(() => SFX.playProfit(), 780);
     }
-    const vibPat = idx >= 4 ? [60,25,60,25,60,25,140] : idx >= 2 ? [50,30,50,30,120] : [30,15,60];
+    const vibPat = idx >= 5 ? [80,30,80,30,80,30,80,30,200] : idx >= 4 ? [60,25,60,25,60,25,140] : idx >= 2 ? [50,30,50,30,120] : [30,15,60];
     vib(vibPat);
-    // Item drop: LEGENDARY(3), INSANE(4), GOD MODE(5)
     if (idx >= 3) tryDrop(idx, pnl);
 }
 
 // Dynamic difficulty scaling — leverage and spread tighten as portfolio grows
 function effectiveLeverage() {
-    const bonus = hasPermUpg('deeppocket') ? 0.15 : 0;
+    const bonus = (hasPermUpg('deeppocket') ? 0.15 : 0) + passives.leverageBonus;
     if (portfolio < 5000)   return 1.5 + bonus;
     if (portfolio < 25000)  return 1.2 + bonus;
     if (portfolio < 100000) return 0.9;
@@ -1672,7 +1842,8 @@ function effectiveLeverage() {
     return 0.4;
 }
 function entrySpreadPct() {
-    const mult = hasPermUpg('thinspread') ? 0.75 : 1;
+    if (passives.spreadFree) return 0;
+    const mult = (hasPermUpg('thinspread') ? 0.75 : 1) * passives.spreadMult;
     if (portfolio < 5000)   return 0.01 * mult;
     if (portfolio < 25000)  return 0.03 * mult;
     if (portfolio < 100000) return 0.07 * mult;
@@ -1680,7 +1851,8 @@ function entrySpreadPct() {
     return 0.25 * mult;
 }
 function holdFeePct() {
-    const mult = hasPermUpg('ironfee') ? 0.70 : 1;
+    if (passives.feeFree) return 0;
+    const mult = (hasPermUpg('ironfee') ? 0.70 : 1) * passives.feeMult;
     if (portfolio < 5000)   return 0.0005 * mult;
     if (portfolio < 25000)  return 0.001  * mult;
     if (portfolio < 100000) return 0.002  * mult;
@@ -1701,17 +1873,19 @@ function startHold() {
     const spread = upg.freehold > 0 ? 0 : Math.round(portfolio * entrySpreadPct());
     portfolio = Math.max(10, portfolio - spread);
     isHolding=true; entryPrice=price; sessionPnl=0; holdTicks=0;
-    vib(38); SFX.playClick(); updateUI();
+    vib(38); SFX.playClick(); SFX.startHoldHum(); updateUI();
 }
 function endHold() {
     if (!isHolding) return;
     isHolding = false;
+    SFX.stopHoldHum();
     clearDanger();
-    upg.safety = false; // SAFETY NET consumed after each trade
-    // portfolio updates first, then leverage resets for next trade
+    upg.safety = false;
     const prevPortfolio = portfolio;
+    // Apply item passive pnl multiplier on wins
+    if (sessionPnl > 0) sessionPnl = sessionPnl * passives.pnlMult;
     portfolio += sessionPnl; portfolio = Math.max(10, portfolio);
-    leverage = effectiveLeverage(); // recalculate for next trade based on new portfolio
+    leverage = effectiveLeverage();
     if (sessionPnl > 0) {
         SFX.playProfit(); vib([22, 12, 65]);
         checkAchievements(sessionPnl, prevPortfolio);
@@ -1862,7 +2036,10 @@ function tryDrop(achIdx, pnl) {
     if (!name) return; // entire drop pool is complete — nothing new to give
     const item = { id: Date.now(), name, rarity: rarityId, pnl: Math.round(pnl), portfolio: Math.round(portfolio), date: new Date().toLocaleDateString('tr-TR') };
     pendingDrop = item;
-    setTimeout(() => showItemDrop(item), 1200);
+    // Wait for achievement animation to fully finish before showing drop
+    // Timer = (180 + achIdx*10) frames @ 60fps, plus 700ms buffer
+    const delay = Math.round((180 + achIdx * 10) / 60 * 1000) + 700;
+    setTimeout(() => showItemDrop(item), delay);
 }
 
 // ── Mini pattern canvas ───────────────────────────────────────────────────────
@@ -1891,9 +2068,9 @@ function showItemDrop(item) {
     if (!gameActive) return;
     const rar  = RARITIES.find(r => r.id === item.rarity);
     const drop = document.getElementById('item-drop');
-    document.getElementById('drop-rarity').textContent  = rar.label;
+    document.getElementById('drop-rarity').textContent  = (S('rarities')[item.rarity]) || rar.label;
     document.getElementById('drop-rarity').style.color  = rar.color;
-    document.getElementById('drop-name').textContent    = item.name;
+    document.getElementById('drop-name').textContent    = iName(item.name);
     document.getElementById('drop-name').style.color    = rar.color;
     document.getElementById('drop-pnl').textContent     = `+${fmt(item.pnl)} · GOD MODE`;
     // Color the rays to match the item rarity
@@ -1911,10 +2088,10 @@ document.getElementById('item-drop').addEventListener('click', () => {
     collection.unshift(pendingDrop);
     if (collection.length > 200) collection = collection.slice(0, 200);
     saveCollection();
+    passives = calcPassives(); // new item may grant new passives
     pendingDrop = null;
     document.getElementById('item-drop').classList.remove('visible');
     updateColDot();
-    // Update collection progress in menu
     const progEl = document.getElementById('col-prog');
     if (progEl) progEl.textContent = `${collection.length}/25`;
     // Resume game
@@ -1939,13 +2116,15 @@ function renderCollection() {
         return;
     }
     empty.style.display = 'none';
-    count.textContent   = `${collection.length} item${collection.length>1?'s':''}`;
+    const n = collection.length;
+    count.textContent = `${n} ${S(n===1 ? 'colItem' : 'colItems')}`;
     grid.innerHTML = collection.map((item, i) => {
         const rar = RARITIES.find(r => r.id === item.rarity);
+        const rarLabel = (S('rarities')[item.rarity]) || rar.label;
         return `<div class="col-card ${item.rarity}" style="border-color:${rar.color}18" data-idx="${i}">
             <div class="col-card-glow" style="background:${rar.color}"></div>
-            <div class="col-card-rarity" style="color:${rar.color}">${rar.label}</div>
-            <div class="col-card-name" style="color:${rar.color}">${item.name}</div>
+            <div class="col-card-rarity" style="color:${rar.color}">${rarLabel}</div>
+            <div class="col-card-name" style="color:${rar.color}">${iName(item.name)}</div>
             <canvas class="col-card-mini" data-name="${item.name}" data-col="${rar.color}"></canvas>
             <div class="col-card-info">+${fmt(item.pnl)}<br>${item.date}</div>
         </div>`;
@@ -1956,17 +2135,86 @@ function renderCollection() {
     });
 }
 
-// Grid touch/click delegation — one handler, no inline onclick
+// Grid touch/click delegation — distinguish tap vs scroll
 const colGrid = document.getElementById('col-grid');
-function handleCardTap(e) {
+let _touchStartY = 0, _touchStartX = 0;
+
+colGrid.addEventListener('touchstart', e => {
+    _touchStartX = e.touches[0].clientX;
+    _touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+colGrid.addEventListener('touchend', e => {
+    const dx = Math.abs(e.changedTouches[0].clientX - _touchStartX);
+    const dy = Math.abs(e.changedTouches[0].clientY - _touchStartY);
+    if (dx > 8 || dy > 8) return; // was a scroll, not a tap
     const card = e.target.closest('.col-card');
     if (!card) return;
     e.preventDefault();
-    e.stopPropagation();
     openCardDetail(parseInt(card.dataset.idx));
+}, { passive: false });
+
+colGrid.addEventListener('click', e => {
+    const card = e.target.closest('.col-card');
+    if (!card) return;
+    openCardDetail(parseInt(card.dataset.idx));
+});
+
+// ── Item Passive Effects ──────────────────────────────────────────────────────
+const ITEM_PASSIVES = {
+    // Rare
+    'Channel Break':     { type: 'spread_mult',    value: 0.88 },
+    'Double Top':        { type: 'event_warn' },
+    // Epic
+    'Black Swan':        { type: 'liq_immunity',   value: 1 },
+    'Short Squeeze':     { type: 'fee_mult',        value: 0.82 },
+    'Flash Crash':       { type: 'event_warn' },
+    'Golden Cross':      { type: 'leverage_bonus',  value: 0.08 },
+    // Legendary
+    'Circuit Breaker':   { type: 'liq_immunity',   value: 2 },
+    'Parabolic Rise':    { type: 'leverage_bonus',  value: 0.12 },
+    'Capitulation':      { type: 'spread_mult',     value: 0.78 },
+    'Euphoria':          { type: 'fee_mult',         value: 0.72 },
+    // Mythic
+    'Market God':        { type: 'pnl_mult',         value: 1.18 },
+    'Omega Point':       { type: 'leverage_bonus',  value: 0.20 },
+    'The Perfect Trade': { type: 'spread_free' },
+    'Infinity':          { type: 'fee_free' },
+    'Zero Day':          { type: 'pnl_mult',         value: 1.35 },
+};
+
+const PASSIVE_LABEL = {
+    spread_mult:    u => `entry spread ×${u.value.toFixed(2)}`,
+    fee_mult:       u => `hold fee ×${u.value.toFixed(2)}`,
+    leverage_bonus: u => `+${u.value} leverage`,
+    pnl_mult:       u => `profit ×${u.value.toFixed(2)}`,
+    liq_immunity:   u => `blocks ${u.value} liquidation${u.value>1?'s':''}`,
+    event_warn:     () => 'crash warning flash',
+    spread_free:    () => 'entry spread removed',
+    fee_free:       () => 'holding fee removed',
+};
+
+function calcPassives() {
+    const p = { spreadMult: 1, feeMult: 1, leverageBonus: 0, pnlMult: 1,
+                liqImmunity: 0, eventWarn: false, spreadFree: false, feeFree: false };
+    collection.forEach(item => {
+        const ps = ITEM_PASSIVES[item.name];
+        if (!ps) return;
+        switch (ps.type) {
+            case 'spread_mult':    p.spreadMult    = Math.max(0.50, p.spreadMult * ps.value); break;
+            case 'fee_mult':       p.feeMult       = Math.max(0.40, p.feeMult    * ps.value); break;
+            case 'leverage_bonus': p.leverageBonus = Math.min(0.30, p.leverageBonus + ps.value); break;
+            case 'pnl_mult':       p.pnlMult       = Math.min(1.60, p.pnlMult    * ps.value); break;
+            case 'liq_immunity':   p.liqImmunity  += ps.value; break;
+            case 'event_warn':     p.eventWarn     = true; break;
+            case 'spread_free':    p.spreadFree    = true; break;
+            case 'fee_free':       p.feeFree       = true; break;
+        }
+    });
+    return p;
 }
-colGrid.addEventListener('touchend', handleCardTap, { passive: false });
-colGrid.addEventListener('click',    handleCardTap);
+let passives = calcPassives();
+let sessionLiqImmunity = passives.liqImmunity;
 
 const ITEM_DESC = {
     // Common
@@ -2005,11 +2253,20 @@ function openCardDetail(i) {
     const item = collection[i];
     if (!item) return;
     const rar = RARITIES.find(r => r.id === item.rarity);
-    document.getElementById('det-rarity').textContent  = rar.label;
+    document.getElementById('det-rarity').textContent  = (S('rarities')[item.rarity]) || rar.label;
     document.getElementById('det-rarity').style.color  = rar.color;
-    document.getElementById('det-name').textContent    = item.name;
+    document.getElementById('det-name').textContent    = iName(item.name);
     document.getElementById('det-name').style.color    = rar.color;
-    document.getElementById('det-desc').textContent    = ITEM_DESC[item.name] || '';
+    const desc = (S('itemDescs')[item.name]) || ITEM_DESC[item.name] || '';
+    document.getElementById('det-desc').textContent    = desc;
+    const ps = ITEM_PASSIVES[item.name];
+    const passiveEl = document.getElementById('det-desc');
+    if (ps) {
+        const lblFn = (S('passiveLbls')[ps.type]) || PASSIVE_LABEL[ps.type];
+        const lbl = lblFn ? lblFn(ps) : '';
+        passiveEl.innerHTML = desc
+            + `<br><span style="font-size:10px;color:#3a7a3a;letter-spacing:0.08em">${S('passive')}: ${lbl}</span>`;
+    }
     document.getElementById('det-meta').innerHTML      =
         `Earned: <span style="color:#444">+${fmt(item.pnl)}</span> &nbsp;·&nbsp; ` +
         `Portfolio: <span style="color:#444">${fmt(item.portfolio)}</span> &nbsp;·&nbsp; ` +
@@ -2262,14 +2519,15 @@ function showMissionToast(m, justCompleted) {
     const text  = document.getElementById('mission-toast-text');
     const prog  = getMissionProgress(m);
     if (justCompleted) {
-        label.textContent = 'mission complete';
-        text.textContent  = m.label;
+        label.textContent = S('missionComplete');
+        text.textContent  = S('m.' + m.id) || m.label;
         el.className = 'complete';
         vib([20, 10, 40, 10, 60]);
     } else {
-        label.textContent = 'mission progress';
+        label.textContent = S('missionProgress');
         const pct = Math.round(prog / m.target * 100);
-        text.textContent  = m.target === 1 ? m.label : `${m.label} — ${prog}/${m.target}`;
+        const mlabel = S('m.' + m.id) || m.label;
+        text.textContent  = m.target === 1 ? mlabel : `${mlabel} — ${prog}/${m.target}`;
         el.className = '';
     }
     el.classList.add('show');
@@ -2337,21 +2595,22 @@ function renderDailyMissions() {
         const prog  = getMissionProgress(m);
         const done  = isMissionDone(m);
         const pct   = Math.min(100, Math.round(prog / m.target * 100));
-        const progText = m.target === 1 ? (done ? 'done' : '0 / 1') : `${prog} / ${m.target}`;
+        const progText = m.target === 1 ? (done ? S('missionDone') : '0 / 1') : `${prog} / ${m.target}`;
+        const mlabel = S('m.' + m.id) || m.label;
         return `<div class="mission-card ${done ? 'done' : ''}">
             <div class="mission-progress-bar" style="width:${pct}%"></div>
             <div class="mission-top">
-                <div class="mission-label">${m.label}</div>
+                <div class="mission-label">${mlabel}</div>
                 <div class="mission-check">✓</div>
             </div>
             <div class="mission-bottom">
                 <div class="mission-prog-text">${progText}</div>
-                <div class="mission-reward">+ item drop</div>
+                <div class="mission-reward">${S('missionReward')}</div>
             </div>
         </div>`;
     }).join('');
     rewardsEl.style.display = allMissionsDone() ? 'block' : 'none';
-    document.getElementById('daily-resets').textContent = `resets in ${msToMidnight()}`;
+    document.getElementById('daily-resets').textContent = `${S('resetsIn')} ${msToMidnight()}`;
 }
 
 const dailyEl = document.getElementById('daily');
@@ -2378,15 +2637,329 @@ function renderMenuMeta() {
     const allDoneEl = document.getElementById('daily-all-done-sub');
     if (allDoneEl) {
         if (hasMissionDropBonus()) {
-            allDoneEl.textContent = '2× drop active today!';
+            allDoneEl.textContent = S('bonusActive');
             allDoneEl.style.color = '#ff8c00';
         } else if (allMissionsDone()) {
-            allDoneEl.textContent = '2× item drop chance unlocked for tomorrow';
+            allDoneEl.textContent = S('allDoneSub');
             allDoneEl.style.color = '';
         }
     }
 }
 renderMenuMeta();
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  LANGUAGE / I18N
+// ══════════════════════════════════════════════════════════════════════════════
+const STRINGS = {
+en: {
+  tagline:'the minimalist market', streakLabel:'day streak', sound:'sound',
+  vibration:'vibration', language:'language', howTo:'how to play',
+  daily:'daily', collection:'collection', watching:'watching', holding:'holding',
+  hintIdle:'hold to buy · release to sell', hintRelease:'release to sell',
+  shopActive:'active', shopPerma:'permanent', shopClose:'close',
+  dailyTitle:'Daily Missions', dailySubtitle:'resets at midnight',
+  allDoneTitle:'all done', allDoneSub:'2× item drop chance unlocked for tomorrow',
+  bonusActive:'2× drop active today!', resetsIn:'resets in',
+  colTitle:'Collection', colEmpty:'no items yet\nearn GOD MODE to unlock drops',
+  back:'← back', close:'close', skip:'skip',
+  missionProgress:'mission progress', missionComplete:'mission complete',
+  missionReward:'+ item drop', missionDone:'done',
+  protected:'Liquidation blocked by item passive',
+  tapToCollect:'tap to collect', itemDropped:'item dropped',
+  colItem:'item', colItems:'items', passive:'passive',
+  rarities:{ common:'Common', rare:'Rare', epic:'Epic', legendary:'Legendary', mythic:'Mythic' },
+  passiveLbls:{
+    spread_mult:    u => `entry spread ×${u.value.toFixed(2)}`,
+    fee_mult:       u => `hold fee ×${u.value.toFixed(2)}`,
+    leverage_bonus: u => `+${u.value} leverage`,
+    pnl_mult:       u => `profit ×${u.value.toFixed(2)}`,
+    liq_immunity:   u => `blocks ${u.value} liquidation${u.value>1?'s':''}`,
+    event_warn:     () => 'crash warning flash',
+    spread_free:    () => 'entry spread removed',
+    fee_free:       () => 'holding fee removed',
+  },
+  itemDescs:{
+    'Dead Cat':         'A brief, feeble bounce after a sharp decline — followed by continued selling. The market looked like it was recovering, but it wasn\'t.',
+    'Bull Trap':        'Price broke higher, luring buyers in — then reversed sharply. Everyone who bought the breakout got trapped.',
+    'Bear Hug':         'A steep drop that got aggressively bought back up. Bears overcrowded the short side and got squeezed out.',
+    'Flat Line':        'No conviction in either direction. Price drifted sideways as buyers and sellers cancelled each other out.',
+    'Noise':            'Pure randomness. No trend, no pattern — just the market making noise while it figures out where it wants to go.',
+    'Double Top':       'Two peaks at nearly the same level. The second attempt to break higher failed, signalling that sellers are in control.',
+    'Cup & Handle':     'A smooth U-shaped recovery followed by a brief dip, then a breakout. One of the most reliable continuation patterns.',
+    'Head & Shoulders': 'Three peaks — the middle highest. A classic reversal: when price breaks the neckline, the trend is officially over.',
+    'Wedge':            'Highs and lows converge toward a point. The breakout direction determines whether it was accumulation or distribution.',
+    'Channel Break':    'Price traded in a tight range for an extended period — then broke out explosively. Compressed energy released all at once.',
+    'Black Swan':       'An extreme, unexpected crash. Nobody saw it coming. The kind of event that wipes out risk models and leveraged positions alike.',
+    'Short Squeeze':    'Too many traders were short. When price moved against them, forced buying created a violent spike. Pain inflicted on bears.',
+    'Flash Crash':      'Price plummeted instantly and recovered just as fast. A moment of pure illiquidity — bids vanished, then returned.',
+    'Golden Cross':     'The 50-period average crossed above the 200-period average. Historically one of the most watched bullish signals.',
+    'Death Cross':      'The 50-period average crossed below the 200-period average. A bearish signal that often precedes extended declines.',
+    'Circuit Breaker':  'The exchange halted trading mid-crash to prevent a meltdown. When trading resumed, the damage was already done.',
+    'Parabolic Rise':   'Price accelerated into a vertical climb. Beautiful while it lasts — but parabolas always end the same way.',
+    'Capitulation':     'Exhausted sellers threw in the towel all at once. Maximum pain. Historically, capitulation marks the end of a bear market.',
+    'Euphoria':         'The crowd became convinced nothing could go wrong — and kept buying. Then reality arrived. It always arrives.',
+    'Despair':          'A slow grind lower, punctuated by dead-cat bounces that went nowhere. Hope was sold into, repeatedly.',
+    'Market God':       'A catastrophic drop followed by a perfect V-shaped recovery to new highs. You timed both sides. Statistically improbable.',
+    'Omega Point':      'Exponential growth approaching a vertical line. The kind of move that only happens once in a market cycle — if at all.',
+    'The Perfect Trade':'Entry at the low, exit at the high. A straight diagonal from bottom to top. Execution without flaw.',
+    'Zero Day':         'Total collapse. Price fell from high to nearly nothing. Whatever was being traded ceased to have value.',
+    'Infinity':         'A hockey stick. Flat for a long time — then a near-vertical explosion. The moment when something becomes everything.',
+  },
+  tutSteps:[
+    'tap and hold anywhere to buy in',
+    'release to lock in your profit',
+    'stay too long — the market liquidates you',
+    'events hit without warning. react fast.',
+  ],
+  m:{
+    trades10:'Close 10 profitable trades today',
+    trades15:'Close 15 profitable trades today',
+    earn5k:'Earn $5,000 in a single trade',
+    earn15k:'Earn $15,000 in a single trade',
+    earn50k:'Earn $50,000 in a single trade',
+    legendary:'Earn a LEGENDARY trade or better',
+    insane:'Earn an INSANE trade or better',
+    godmode:'Earn a GOD MODE trade',
+    survive3:'Survive 3 crashes while holding',
+    noliqs12:'Complete 12 trades without liquidation',
+    noliqs20:'Complete 20 trades without liquidation',
+    useupgrade3:'Use 3 upgrades today',
+    hold60:'Survive a 60-second hold without liquidation',
+    hold120:'Survive a 2-minute hold without liquidation',
+    port10k:'Grow your portfolio above $10,000',
+    port50k:'Grow your portfolio above $50,000',
+    port100k:'Grow your portfolio above $100,000',
+  },
+  help:`<div class="h-title">How to Play</div>
+    <div class="h-sec"><div class="h-head">The Basics</div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt"><b>Hold</b> the screen to buy. <b>Release</b> to sell and lock in your profit or loss.</div></div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">A small <b>holding fee</b> ticks up the longer you stay in. Don't overstay.</div></div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">Breaking <b>news events</b> hit without warning. Crashes drop hard. React fast.</div></div>
+    </div>
+    <div class="h-sec"><div class="h-head">Danger Zone</div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">Down <b>45%+</b>? Screen pulses red — danger zone. A bar fills from the bottom.</div></div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">Bar completes → <b>liquidated</b>. Recover above <b>–30%</b> to cancel it.</div></div>
+    </div>
+    <div class="h-sec"><div class="h-head">Trade Achievements</div>
+      <div class="h-ach" style="margin-top:14px"><span class="h-ach-name" style="color:#aaffaa">GOOD</span><span class="h-ach-desc">+14% gain</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#00e87a">GREAT</span><span class="h-ach-desc">+32%</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#00cfff">AWESOME</span><span class="h-ach-desc">+70%</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#ffd700">LEGENDARY</span><span class="h-ach-desc">+150% — item drop</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#ff44ff">INSANE</span><span class="h-ach-desc">+350% — item drop</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#fff">GOD MODE</span><span class="h-ach-desc">+800% — rare item drop</span></div>
+    </div>`,
+},
+tr: {
+  tagline:'minimalist piyasa', streakLabel:'günlük seri', sound:'ses',
+  vibration:'titreşim', language:'dil', howTo:'nasıl oynanır',
+  daily:'günlük', collection:'koleksiyon', watching:'izleniyor', holding:'tutuyorsun',
+  hintIdle:'bas ve tut al · bırak sat', hintRelease:'bırak · sat',
+  shopActive:'aktif', shopPerma:'kalıcı', shopClose:'kapat',
+  dailyTitle:'Günlük Görevler', dailySubtitle:'gece yarısı sıfırlanır',
+  allDoneTitle:'hepsi tamam', allDoneSub:'yarın 2× kart düşme şansı kazandın',
+  bonusActive:'2× düşüş bugün aktif!', resetsIn:'sıfırlanma',
+  colTitle:'Koleksiyon', colEmpty:'henüz item yok\nGOD MODE kazan, kartlar düşsün',
+  back:'← geri', close:'kapat', skip:'geç',
+  missionProgress:'görev ilerliyor', missionComplete:'görev tamamlandı',
+  missionReward:'+ item düşer', missionDone:'tamam',
+  protected:'Tasfiye item pasifi tarafından engellendi',
+  tapToCollect:'toplamak için dokun', itemDropped:'item düştü',
+  colItem:'nesne', colItems:'nesne', passive:'pasif',
+  rarities:{ common:'Yaygın', rare:'Nadir', epic:'Epik', legendary:'Efsanevi', mythic:'Mistik' },
+  itemNames:{
+    'Dead Cat':'Ölü Kedi', 'Bull Trap':'Boğa Tuzağı', 'Bear Hug':'Ayı Sarması',
+    'Flat Line':'Düz Çizgi', 'Noise':'Testere Dişi',
+    'Double Top':'Çift Tepe', 'Cup & Handle':'Fincan & Kulp',
+    'Head & Shoulders':'Omuz Baş Omuz', 'Wedge':'Kama', 'Channel Break':'Kanal Kırılımı',
+    'Black Swan':'Siyah Kuğu', 'Short Squeeze':'Short Sıkışması',
+    'Flash Crash':'Ani Çöküş', 'Golden Cross':'Altın Kesişim', 'Death Cross':'Ölüm Kesişimi',
+    'Circuit Breaker':'Devre Kesici', 'Parabolic Rise':'Parabolik Yükseliş',
+    'Capitulation':'Kapitülasyon', 'Euphoria':'Coşku', 'Despair':'Umutsuzluk',
+    'Market God':'Piyasa Tanrısı', 'Omega Point':'Omega Noktası',
+    'The Perfect Trade':'Mükemmel İşlem', 'Zero Day':'Sıfır Gün', 'Infinity':'Sonsuzluk',
+  },
+  passiveLbls:{
+    spread_mult:    u => `giriş spreadi ×${u.value.toFixed(2)}`,
+    fee_mult:       u => `tutma ücreti ×${u.value.toFixed(2)}`,
+    leverage_bonus: u => `+${u.value} kaldıraç`,
+    pnl_mult:       u => `kâr ×${u.value.toFixed(2)}`,
+    liq_immunity:   u => `${u.value} tasfiyeyi engeller`,
+    event_warn:     () => 'çöküş uyarı flaşı',
+    spread_free:    () => 'giriş spreadi kaldırıldı',
+    fee_free:       () => 'tutma ücreti kaldırıldı',
+  },
+  itemDescs:{
+    'Dead Cat':         'Sert düşüşün ardından gelen kısa ve güçsüz bir zıplama — ardından satış devam etti. Piyasa toparlanıyormuş gibi görünüyordu ama görünüş yanıltıcıydı.',
+    'Bull Trap':        'Fiyat yukarı kırdı, alıcıları içeri çekti — sonra sert düşüş. Kırılımı satın alan herkes tuzağa düştü.',
+    'Bear Hug':         'Sert düşüş ardından agresif biçimde yukarı alındı. Ayılar kısa tarafta sıkıştı ve çıkmak zorunda kaldı.',
+    'Flat Line':        'İki yönde de inanç yok. Alıcılar ve satıcılar birbirini götürdü, fiyat yatay sürüklendi.',
+    'Noise':            'Fiyat art arda zikzak yaptı — her raliyi satış, her dibi alım takip etti. Yön yok, karar yok. Piyasa yerinde saydı.',
+    'Double Top':       'Aynı seviyede iki tepe. İkinci çıkış denemesi başarısız oldu — satıcıların kontrolde olduğunu gösteriyor.',
+    'Cup & Handle':     'Düzgün bir U şekilli toparlanma, kısa bir dip, ardından kırılım. En güvenilir devam formasyonlarından biri.',
+    'Head & Shoulders': 'Üç tepe — ortadaki en yüksek. Klasik dönüş: fiyat boyun çizgisini kırdığında trend resmen sona erer.',
+    'Wedge':            'Tepeler ve dipler bir noktada birleşiyor. Kırılım yönü birikimin mi dağılımın mı olduğunu ortaya koyuyor.',
+    'Channel Break':    'Fiyat uzun süre dar bir bantta hareket etti — sonra patladı. Biriken enerji bir anda serbest kaldı.',
+    'Black Swan':       'Çok uç, beklenmedik çöküş. Kimse görmedi. Risk modellerini ve kaldıraçlı pozisyonları silen türden bir olay.',
+    'Short Squeeze':    'Çok fazla trader kısa pozisyondaydı. Fiyat aleyhlerinde hareket edince zorla alımlar şiddetli bir spike oluşturdu. Ayılara acı çektirdi.',
+    'Flash Crash':      'Fiyat anında çöktü ve aynı hızla toparlandı. Anlık likiditesizlik — alış emirleri buharlaştı, sonra geri döndü.',
+    'Golden Cross':     '50 periyot ortalaması 200 periyot ortalamasının üstüne geçti. Tarihsel olarak en çok izlenen boğa sinyallerinden biri.',
+    'Death Cross':      '50 periyot ortalaması 200 periyot ortalamasının altına geçti. Uzun düşüşlerden önce sıkça görülen ayı sinyali.',
+    'Circuit Breaker':  'Borsa çöküşü durdurmak için işlemleri askıya aldı. İşlemler yeniden başladığında hasar zaten gerçekleşmişti.',
+    'Parabolic Rise':   'Fiyat dikey bir tırmanışa geçti. Sürerken güzel görünüyor — ama paraboller hep aynı şekilde biter.',
+    'Capitulation':     'Yorgun satıcılar hepsi birden pes etti. Maksimum acı. Tarihsel olarak kapitülasyon ayı piyasasının sonunu işaret eder.',
+    'Euphoria':         'Kalabalık hiçbir şeyin yanlış gidemeyeceğine inandı — ve almaya devam etti. Sonra gerçeklik geldi. Hep gelir.',
+    'Despair':          'Hiçbir yere gitmeyen diplerle kesintiye uğrayan yavaş bir aşağı sürüklenme. Umut tekrar tekrar satıldı.',
+    'Market God':       'Felaket düşüş ardından mükemmel V şeklinde toparlanarak yeni zirvelere. İki tarafı da zamanladın. İstatistiksel olarak neredeyse imkânsız.',
+    'Omega Point':      'Dikey çizgiye yaklaşan üstel büyüme. Bu tür bir hareket bir piyasa döngüsünde sadece bir kez yaşanır — belki hiç.',
+    'The Perfect Trade':'Dibinden giriş, tepesinden çıkış. Alttan üste düz diyagonal. Kusursuz uygulama.',
+    'Zero Day':         'Tam çöküş. Fiyat yüksekten neredeyse sıfıra düştü. İşlem gören şey değerini yitirdi.',
+    'Infinity':         'Hokey sopası. Uzun süre yatay — sonra neredeyse dikey patlama. Bir şeyin her şey olduğu an.',
+  },
+  tutSteps:[
+    'herhangi bir yere bas ve tut — piyasaya gir',
+    'bırak — kârını kilitle',
+    'çok uzun kalırsan — piyasa seni tasfiye eder',
+    'olaylar uyarısız gelir. hızlı tepki ver.',
+  ],
+  m:{
+    trades10:'Bugün 10 kazançlı işlem kapat',
+    trades15:'Bugün 15 kazançlı işlem kapat',
+    earn5k:'Tek işlemde $5,000 kazan',
+    earn15k:'Tek işlemde $15,000 kazan',
+    earn50k:'Tek işlemde $50,000 kazan',
+    legendary:'LEGENDARY veya üstü bir işlem yap',
+    insane:'INSANE veya üstü bir işlem yap',
+    godmode:'GOD MODE kazan',
+    survive3:'İçerideyken 3 çöküşten kurtar',
+    noliqs12:'Tasfiyesiz 12 işlem tamamla',
+    noliqs20:'Tasfiyesiz 20 işlem tamamla',
+    useupgrade3:'Bugün 3 yükseltme kullan',
+    hold60:'60 saniye tasfiyesiz tut',
+    hold120:'2 dakika tasfiyesiz tut',
+    port10k:'Portföyü $10,000 üzerine çıkar',
+    port50k:'Portföyü $50,000 üzerine çıkar',
+    port100k:'Portföyü $100,000 üzerine çıkar',
+  },
+  help:`<div class="h-title">Nasıl Oynanır</div>
+    <div class="h-sec"><div class="h-head">Temel Mekanikler</div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">Ekrana <b>bas ve tut</b> → satın al. <b>Bırak</b> → sat, kâr/zararı kilitle.</div></div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">İçeride kaldıkça küçük bir <b>tutma ücreti</b> birikir. Çok uzun kalma.</div></div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt"><b>Haber olayları</b> uyarısız gelir. Çöküşler sert düşer, pumplar hızlı çıkar. Hızlı tepki ver.</div></div>
+    </div>
+    <div class="h-sec"><div class="h-head">Tehlike Bölgesi</div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">%45'ten fazla zarar mı var? Ekran kırmızı titrer — tehlike bölgesi.</div></div>
+      <div class="h-row"><div class="h-pip"></div><div class="h-txt">Alttaki çubuk dolarsa → <b>tasfiye</b>. Zarar -%30'un üstüne çıkarsa çubuk sıfırlanır.</div></div>
+    </div>
+    <div class="h-sec"><div class="h-head">İşlem Başarıları</div>
+      <div class="h-ach" style="margin-top:14px"><span class="h-ach-name" style="color:#aaffaa">GOOD</span><span class="h-ach-desc">+%14 kazanç</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#00e87a">GREAT</span><span class="h-ach-desc">+%32</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#00cfff">AWESOME</span><span class="h-ach-desc">+%70</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#ffd700">LEGENDARY</span><span class="h-ach-desc">+%150 — item düşer</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#ff44ff">INSANE</span><span class="h-ach-desc">+%350 — item düşer</span></div>
+      <div class="h-ach"><span class="h-ach-name" style="color:#fff">GOD MODE</span><span class="h-ach-desc">+%800 — nadir item düşer</span></div>
+    </div>`,
+},
+};
+
+let langCode = localStorage.getItem('holdLang') || 'en';
+function S(key) {
+    const parts = key.split('.');
+    let obj = STRINGS[langCode] || STRINGS.en;
+    for (const p of parts) { obj = obj?.[p]; if (obj === undefined) break; }
+    if (obj === undefined) { obj = STRINGS.en; for (const p of key.split('.')) obj = obj?.[p]; }
+    return (obj === undefined || obj === null) ? key : obj;
+}
+// Returns translated item display name (falls back to English key)
+function iName(name) {
+    const map = S('itemNames');
+    return (map && map[name]) || name;
+}
+
+function applyLang() {
+    // Update lang toggle UI
+    document.querySelectorAll('.lang-opt').forEach(el => {
+        el.classList.toggle('active', el.dataset.lang === langCode);
+    });
+    // Update all data-i18n elements
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.dataset.i18n;
+        const v = S(k);
+        if (typeof v === 'string') {
+            if (k === 'colEmpty') el.innerHTML = v.replace('\n', '<br>');
+            else el.textContent = v;
+        }
+    });
+    // Update help content
+    const helpEl = document.querySelector('[data-help-content]');
+    if (helpEl) helpEl.innerHTML = S('help');
+    // Re-render dynamic content
+    updateUI();
+    renderDailyMissions();
+    renderMenuMeta();
+    renderShop();
+    if (typeof renderPermaShop === 'function') renderPermaShop();
+}
+
+// Lang toggle event
+document.getElementById('lang-switch').addEventListener('click', e => {
+    const opt = e.target.closest('.lang-opt');
+    if (!opt) return;
+    langCode = opt.dataset.lang;
+    localStorage.setItem('holdLang', langCode);
+    applyLang();
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  ONBOARDING TUTORIAL (first launch only)
+// ══════════════════════════════════════════════════════════════════════════════
+const TUT_STEPS = [
+    'tap and hold anywhere to buy in',
+    'release to lock in your profit',
+    'stay too long — the market liquidates you',
+    'events hit without warning. react fast.',
+];
+const TUT_DURATION = 2600; // ms per step
+
+function showTutorial() {
+    if (localStorage.getItem('holdTutSeen')) return;
+    const tut    = document.getElementById('tutorial');
+    const msgEl  = document.getElementById('tut-msg');
+    const barFill= document.getElementById('tut-bar-fill');
+    tut.style.display = 'flex';
+    let step = 0;
+    let stepTimer, barTimer;
+
+    function advance() {
+        const tutSteps = S('tutSteps');
+        if (step >= tutSteps.length) { dismiss(); return; }
+        // Fade out
+        msgEl.classList.add('fade');
+        clearTimeout(barTimer);
+        barFill.style.transition = 'none'; barFill.style.width = '0%';
+        setTimeout(() => {
+            msgEl.textContent = tutSteps[step++];
+            msgEl.classList.remove('fade');
+            // Progress bar
+            barFill.style.transition = `width ${TUT_DURATION}ms linear`;
+            requestAnimationFrame(() => { barFill.style.width = '100%'; });
+        }, 360);
+        stepTimer = setTimeout(advance, TUT_DURATION + 360);
+    }
+
+    function dismiss() {
+        clearTimeout(stepTimer);
+        tut.classList.add('out');
+        localStorage.setItem('holdTutSeen', '1');
+        setTimeout(() => { tut.style.display = 'none'; tut.classList.remove('out'); }, 580);
+    }
+
+    advance();
+    tut.addEventListener('click', e => {
+        if (e.target.id === 'tut-skip') { dismiss(); return; }
+        clearTimeout(stepTimer); advance();
+    });
+    document.getElementById('tut-skip').addEventListener('click', dismiss, { once: true });
+}
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
 let gameActive = false;
