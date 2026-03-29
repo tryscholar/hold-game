@@ -462,6 +462,13 @@
         /* Collection button dot */
         #col-btn-dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #00e87a; margin-left: 6px; vertical-align: middle; opacity: 0; transition: opacity 0.3s; }
         #col-btn-dot.show { opacity: 1; }
+                /* Kaydırma sırasında kartlara tıklanmasını engeller */
+        .col-item {
+            pointer-events: auto;
+        }
+        #collection-screen:active .col-item {
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
