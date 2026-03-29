@@ -1947,6 +1947,7 @@ function renderCollection() {
     }
     empty.style.display = 'none';
     count.textContent   = `${collection.length} item${collection.length>1?'s':''}`;
+    
     grid.innerHTML = collection.map((item, i) => {
         const rar = RARITIES.find(r => r.id === item.rarity);
         return `<div class="col-card ${item.rarity}" style="border-color:${rar.color}18" data-idx="${i}">
@@ -1957,11 +1958,144 @@ function renderCollection() {
             <div class="col-card-info">+${fmt(item.pnl)}<br>${item.date}</div>
         </div>`;
     }).join('');
-    // Draw mini charts after render
+    
     grid.querySelectorAll('.col-card-mini').forEach(cvs => {
         drawMiniPattern(cvs, cvs.dataset.name, cvs.dataset.col);
     });
 }
+
+// KAYDIRMA VE TIKLAMA KONTROLÜ (ZIKKIM ÇÖZÜCÜ)
+let isScrollingCol = false;
+let startYCol = 0;
+const colGrid = document.getElementById('col-grid');
+
+colGrid.addEventListener('touchstart', (e) => {
+    startYCol = e.touches[0].pageY;
+    isScrollingCol = false;
+}, { passive: true });
+
+colGrid.addEventListener('touchmove', (e) => {
+    if (Math.abs(e.touches[0].pageY - startYCol) > 10) {
+        isScrollingCol = true; 
+    }
+}, { passive: true });
+
+function handleCardTap(e) {
+    // Eğer parmak kayıyorsa fonksiyonu burada öldür, kart açılmasın
+    if (isScrollingCol) return; 
+    
+    const card = e.target.closest('.col-card');
+    if (!card) return;
+    
+    // Tıklanan kartın detayını aç
+    openCardDetail(parseInt(card.dataset.idx));
+}
+
+// Mevcut dinleyicileri bu güvenli fonksiyonla değiştiriyoruz
+colGrid.addEventListener('touchend', handleCardTap);
+colGrid.addEventListener('click', handleCardTap);
+
+const ITEM_DESC = {
+    'Dead Cat': 'A brief, feeble bounce after a sharp decline — followed by continued selling.',
+    'Bull Trap': 'Price broke higher, luring buyers in — then reversed sharply.',
+    'Bear Hug': 'A steep drop that got aggressively bought back up.',
+    'Flat Line': 'No conviction in either direction.',
+    'Noise': 'Pure randomness.',
+    'Double Top': 'Two peaks at nearly the same level.',
+    'Cup & Handle': 'A smooth U-shaped recovery followed by a brief dip, then a breakout.',
+    'Head & Shoulders': 'Three peaks — the middle highest. A classic reversal.',
+    'Wedge': 'Highs and lows converge toward a point.',
+    'Channel Break': 'Price traded in a tight range for an extended period.',
+    'Black Swan': 'An extreme, unexpected crash. Nobody saw it coming.',
+    'Short Squeeze': 'Too many traders were short. Pain inflicted on bears.',
+    'Flash Crash': 'Price plummeted instantly and recovered just as fast.',
+    'Golden Cross': 'The 50-period average crossed above the 200-period average.',
+    'Death Cross': 'The 50-period average crossed below the 200-period average.',
+    'Circuit Breaker': 'The exchange halted trading mid-crash to prevent a meltdown.',
+    'Parabolic Rise': 'Price accelerated into a vertical climb.',
+    'Capitulation': 'Exhausted sellers threw in the towel all at once.',
+    'Euphoria': 'The crowd became convinced nothing could go wrong.',
+    'Despair': 'A slow grind lower, punctuated by dead-cat bounces.',
+    'Market God': 'A catastrophic drop followed by a perfect V-shaped recovery.',
+    'Omega Point': 'Exponential growth approaching a vertical line.',
+    'The Perfect Trade':'Entry at the low, exit at the high.',
+    'Zero Day': 'Total collapse. Price fell from high to nearly nothing.',
+    'Infinity': 'A hockey stick. Flat for a long time — then a near-vertical explosion.',
+};
+
+function openCardDetail(i) {
+    const item = collection[i];
+    if (!item) return;
+    const rar = RARITIES.find(r => r.id === item.rarity);
+    document.getElementById('det-rarity').textContent  = rar.label;
+    document.getElementById('det-rarity').style.color  = rar.color;
+    document.getElementById('det-name').textContent    = item.name;
+    document.getElementById('det-name').style.color    = rar.color;
+    document.getElementById('det-desc').textContent    = ITEM_DESC[item.name] || '';
+    document.getElementById('det-meta').innerHTML      =
+        `Earned: <span style="color:#444">+${fmt(item.pnl)}</span> &nbsp;·&nbsp; ` +
+        `Portfolio: <span style="color:#444">${fmt(item.portfolio)}</span> &nbsp;·&nbsp; ` +
+        `<span style="color:#333">${item.date}</span>`;
+    const detCvs = document.getElementById('det-canvas');
+    const modal  = document.getElementById('card-detail');
+    modal.classList.add('open');
+    requestAnimationFrame(() => drawMiniPattern(detCvs, item.name, rar.color));
+    if (typeof vib === 'function') vib(18);
+}
+
+function closeCardDetail() {
+    document.getElementById('card-detail').classList.remove('open');
+}
+
+document.getElementById('card-detail-inner').addEventListener('click', e => e.stopPropagation());
+document.getElementById('card-detail-inner').addEventListener('touchend', e => e.stopPropagation());
+
+document.getElementById('card-detail').addEventListener('click', e => {
+    if (e.target === document.getElementById('card-detail')) closeCardDetail();
+});
+
+document.getElementById('det-close').addEventListener('click', closeCardDetail);
+
+document.getElementById('col-btn').addEventListener('click', () => {
+    menuEl.classList.add('hidden');
+    renderCollection();
+    setTimeout(() => colEl.classList.remove('hidden'), 80);
+});
+
+document.getElementById('col-back').addEventListener('click', () => {
+    colEl.classList.add('hidden');
+    setTimeout(() => { menuEl.classList.remove('hidden'); if(window.updateColDot) updateColDot(); }, 80);
+});
+
+function buyUpgrade(id) {
+    const u = UPG_DEF.find(x => x.id === id);
+    if (!u || isHolding) return;
+    const cost = Math.max(u.min, Math.round(portfolio * u.pct / 10) * 10);
+    if (portfolio < cost) return;
+    portfolio -= cost;
+    if (id === 'freehold') upg.freehold = 90 * 60;
+    else upg[id] = true;
+    updateUI(); renderShop(); if(window.updateUpgPills) updateUpgPills();
+    if(window.vib) vib([20, 10, 40]);
+}
+
+function openShop() {
+    if (isHolding) return;
+    renderShop();
+    document.getElementById('shop-panel').classList.add('open');
+}
+
+function closeShop() {
+    document.getElementById('shop-panel').classList.remove('open');
+}
+
+document.getElementById('shop-btn').addEventListener('click', openShop);
+document.getElementById('shop-close-btn').addEventListener('click', closeShop);
+document.getElementById('shop-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.shop-tab');
+    if (tab && window.switchShopTab) switchShopTab(tab.dataset.tab);
+});
+
 
 // Grid touch/click delegation — one handler, no inline onclick
 const colGrid = document.getElementById('col-grid');
