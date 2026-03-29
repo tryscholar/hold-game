@@ -197,12 +197,18 @@
         }
 
         /* ══ HOW TO PLAY LINK (menu) ══════════════════════════════════════════ */
-        #how-to-btn {
-            font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
-            color: #3a3a3a; cursor: pointer; margin-top: 28px;
-            padding: 10px 20px; transition: color 0.2s;
+        #menu-links {
+            display: flex; gap: 0; margin-top: 24px;
+            border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden;
         }
-        #how-to-btn:active { color: #777; }
+        .menu-link {
+            font-size: 9px; letter-spacing: 0.20em; text-transform: uppercase;
+            color: #505050; cursor: pointer; padding: 13px 22px;
+            transition: color 0.2s, background 0.2s; white-space: nowrap;
+        }
+        .menu-link:active { color: #aaa; background: #111; }
+        .menu-link + .menu-link { border-left: 1px solid #1e1e1e; }
+        #how-to-btn { }  /* kept for JS compat */
 
         /* ══ HELP SCREEN ══════════════════════════════════════════════════════ */
         #help {
@@ -278,27 +284,45 @@
         .col-card.mythic .col-card-glow { animation: shimmer 2.4s ease-in-out infinite; }
 
         /* ══ ITEM DROP OVERLAY ═══════════════════════════════════════════════ */
+        @keyframes raysSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes dropFadeIn { from { opacity:0; } to { opacity:1; } }
+
         #item-drop {
             position: absolute; inset: 0; z-index: 60;
             display: flex; align-items: center; justify-content: center;
             pointer-events: none; opacity: 0;
             transition: opacity 0.35s;
+            background: rgba(0,0,0,0);
         }
-        #item-drop.visible { opacity: 1; pointer-events: auto; }
+        #item-drop.visible {
+            opacity: 1; pointer-events: auto;
+            background: rgba(0,0,0,0.75);
+        }
+
+        /* Rotating light rays behind the card */
+        #drop-rays {
+            position: absolute;
+            width: 520px; height: 520px;
+            opacity: 0; transition: opacity 0.6s 0.2s;
+            pointer-events: none;
+        }
+        #item-drop.visible #drop-rays { opacity: 1; }
+        #drop-rays svg { width: 100%; height: 100%; animation: raysSpin 8s linear infinite; }
+
         #item-drop-card {
-            width: 200px; border-radius: 6px; padding: 20px 18px 16px;
+            width: 210px; border-radius: 6px; padding: 20px 18px 16px;
             border: 1px solid #222; background: #060606;
             transform: translateY(24px) scale(0.92);
-            transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
-            position: relative; overflow: hidden;
+            transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1);
+            position: relative; z-index: 1;
         }
         #item-drop.visible #item-drop-card { transform: translateY(0) scale(1); }
-        #drop-new { font-size: 7px; letter-spacing: 0.32em; text-transform: uppercase; color: #333; margin-bottom: 12px; }
+        #drop-new    { font-size: 7px; letter-spacing: 0.32em; text-transform: uppercase; color: #333; margin-bottom: 12px; }
         #drop-rarity { font-size: 7px; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 6px; }
-        #drop-name { font-size: 17px; font-weight: 300; letter-spacing: 0.04em; margin-bottom: 14px; line-height: 1.25; }
-        #drop-mini { width: 100%; height: 44px; display: block; margin-bottom: 14px; }
-        #drop-pnl { font-size: 9px; letter-spacing: 0.1em; color: #2e2e2e; margin-bottom: 14px; }
-        #drop-tap { font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: #222; text-align: center; }
+        #drop-name   { font-size: 17px; font-weight: 300; letter-spacing: 0.04em; margin-bottom: 14px; line-height: 1.25; }
+        #drop-mini   { width: 100%; height: 44px; display: block; margin-bottom: 14px; }
+        #drop-pnl    { font-size: 9px; letter-spacing: 0.1em; color: #2e2e2e; margin-bottom: 14px; }
+        #drop-tap    { font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: #333; text-align: center; }
 
         /* ══ CARD DETAIL MODAL ═══════════════════════════════════════════════ */
         #card-detail {
@@ -306,16 +330,19 @@
             display: flex; align-items: flex-end; justify-content: center;
             background: rgba(0,0,0,0); pointer-events: none;
             transition: background 0.3s;
+            overflow: hidden; /* prevents inner panel showing as strip when translated off-screen */
         }
         #card-detail.open {
             background: rgba(0,0,0,0.72); pointer-events: auto;
+            overflow: visible; /* allow panel to be fully visible when open */
         }
         #card-detail-inner {
             width: 100%; max-width: 430px;
             background: #060606; border-top: 1px solid #181818;
             padding: 28px 28px 52px;
-            transform: translateY(100%);
+            transform: translateY(110%); /* extra 10% ensures border-top is also hidden */
             transition: transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94);
+            touch-action: none; /* prevent scroll bleed-through on iOS */
         }
         #card-detail.open #card-detail-inner { transform: translateY(0); }
         #det-rarity  { font-size: 7px; letter-spacing: 0.30em; text-transform: uppercase; margin-bottom: 8px; }
@@ -326,9 +353,66 @@
         #det-close   { font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: #2a2a2a; text-align: center; margin-top: 20px; cursor: pointer; padding: 8px; transition: color 0.2s; }
         #det-close:active { color: #666; }
 
-        /* Collection button in menu */
-        #col-btn { font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: #3a3a3a; cursor: pointer; margin-top: 4px; padding: 10px 20px; transition: color 0.2s; }
-        #col-btn:active { color: #777; }
+
+        /* ══ MISSION TOAST (in-game) ═════════════════════════════════════════ */
+        #mission-toast {
+            position: absolute; left: 50%; top: 88px;
+            transform: translateX(-50%) translateY(-18px);
+            z-index: 40; pointer-events: none;
+            opacity: 0; transition: opacity 0.25s, transform 0.25s;
+            white-space: nowrap; text-align: center;
+        }
+        #mission-toast.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
+        #mission-toast-label {
+            font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase;
+            color: #ffd700; margin-bottom: 3px;
+        }
+        #mission-toast-text {
+            font-size: 10px; letter-spacing: 0.08em; color: #404040;
+        }
+        #mission-toast.complete #mission-toast-label { color: #00e87a; }
+        #mission-toast.complete #mission-toast-text  { color: #00e87a88; }
+
+        /* ══ DAILY MISSIONS SCREEN ═══════════════════════════════════════════ */
+        #daily {
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            align-items: flex-start; justify-content: flex-start;
+        }
+        #daily-inner { padding: 58px 28px 100px; width: 100%; max-width: 430px; margin: 0 auto; }
+        #daily-title { font-size: 11px; letter-spacing: 0.36em; text-transform: uppercase; color: #484848; margin-bottom: 6px; text-align: center; }
+        #daily-subtitle { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #242424; text-align: center; margin-bottom: 40px; }
+        .mission-card {
+            border: 1px solid #141414; border-radius: 3px;
+            padding: 16px 18px; margin-bottom: 10px;
+            position: relative; overflow: hidden; transition: border-color 0.3s;
+        }
+        .mission-card.done { border-color: #1a3a22; }
+        .mission-progress-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            background: #00e87a08; transition: width 0.4s ease; pointer-events: none;
+        }
+        .mission-card.done .mission-progress-bar { background: #00e87a0d; width: 100% !important; }
+        .mission-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+        .mission-label { font-size: 12px; font-weight: 300; color: #606060; line-height: 1.5; flex: 1; }
+        .mission-card.done .mission-label { color: #00e87a; }
+        .mission-check { font-size: 14px; flex-shrink: 0; opacity: 0; transition: opacity 0.3s; }
+        .mission-card.done .mission-check { opacity: 1; }
+        .mission-bottom { display: flex; justify-content: space-between; align-items: center; }
+        .mission-prog-text { font-size: 9px; letter-spacing: 0.1em; color: #2a2a2a; }
+        .mission-card.done .mission-prog-text { color: #1a4a28; }
+        .mission-reward { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: #1e3a28; }
+        #daily-all-done { display: none; text-align: center; margin-top: 24px; padding: 20px; border: 1px solid #1a3a22; border-radius: 3px; }
+        #daily-all-done-title { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: #00e87a; margin-bottom: 8px; }
+        #daily-all-done-sub { font-size: 10px; color: #2a4a32; letter-spacing: 0.08em; }
+        #daily-resets { font-size: 9px; letter-spacing: 0.14em; color: #1e1e1e; text-align: center; margin-top: 28px; }
+        #daily-back { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: #3a3a3a; cursor: pointer; padding: 18px 40px 38px; background: linear-gradient(transparent, #080808 55%); width: 100%; max-width: 430px; text-align: center; transition: color 0.2s; }
+        #daily-back:active { color: #555; }
+        #daily-btn-dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #ffd700; margin-left: 6px; vertical-align: middle; opacity: 0; transition: opacity 0.3s; }
+        #daily-btn-dot.show { opacity: 1; }
+
+        /* Collection button dot */
         #col-btn-dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #00e87a; margin-left: 6px; vertical-align: middle; opacity: 0; transition: opacity 0.3s; }
         #col-btn-dot.show { opacity: 1; }
     </style>
@@ -358,8 +442,26 @@
             <div class="toggle on" id="vib-tog"><div class="toggle-dot"></div></div>
         </div>
     </div>
-    <div id="how-to-btn">how to play</div>
-    <div id="col-btn">collection <span id="col-btn-dot"></span></div>
+    <div id="menu-links">
+        <div id="how-to-btn"  class="menu-link">how to play</div>
+        <div id="daily-btn"   class="menu-link">daily <span id="daily-btn-dot"></span></div>
+        <div id="col-btn"     class="menu-link">collection <span id="col-btn-dot"></span></div>
+    </div>
+</div>
+
+<!-- ══════════════════════ DAILY MISSIONS ════════════════════════════════════ -->
+<div id="daily" class="screen hidden">
+    <div id="daily-inner">
+        <div id="daily-title">Daily Missions</div>
+        <div id="daily-subtitle">resets at midnight</div>
+        <div id="daily-missions"></div>
+        <div id="daily-all-done">
+            <div id="daily-all-done-title">all done</div>
+            <div id="daily-all-done-sub">come back tomorrow for new missions</div>
+        </div>
+        <div id="daily-resets"></div>
+    </div>
+    <div id="daily-back">← back</div>
 </div>
 
 <!-- ══════════════════════ COLLECTION ════════════════════════════════════════ -->
@@ -403,11 +505,6 @@
             <div class="h-row"><div class="h-pip"></div><div class="h-txt">Recover above <b>–30% loss</b> and the danger zone resets. Sell fast or ride it out.</div></div>
         </div>
 
-        <div class="h-sec">
-            <div class="h-head">Chart Overlays</div>
-            <div class="h-row"><div class="h-pip" style="background:rgba(100,160,255,0.5)"></div><div class="h-txt"><b>SMA (blue dotted)</b> — 20-period Simple Moving Average. Price above the line = uptrend; below = downtrend.</div></div>
-            <div class="h-row"><div class="h-pip" style="background:rgba(255,175,50,0.5)"></div><div class="h-txt"><b>WMA (amber dotted)</b> — 14-period Weighted Average. Reacts faster than SMA because recent prices weigh more.</div></div>
-        </div>
 
         <div class="h-sec">
             <div class="h-head">Indicators — tap panel to switch</div>
@@ -453,9 +550,39 @@
         <div id="status">watching</div>
         <div id="hint">hold to buy · release to sell</div>
     </div>
+
+    <div id="mission-toast">
+        <div id="mission-toast-label"></div>
+        <div id="mission-toast-text"></div>
+    </div>
     <div id="back-btn">menu</div>
     <div id="shop-btn">shop</div>
     <div id="item-drop">
+        <div id="drop-rays">
+            <svg viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <radialGradient id="rg" cx="50%" cy="50%" r="50%">
+                        <stop offset="20%" stop-color="currentColor" stop-opacity="0"/>
+                        <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>
+                <g id="drop-rays-g" fill="currentColor" opacity="0.13" transform="translate(260,260)">
+                    <!-- 12 rays evenly spaced -->
+                    <polygon points="0,-260 10,0 -10,0"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(30)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(60)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(90)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(120)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(150)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(180)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(210)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(240)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(270)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(300)"/>
+                    <polygon points="0,-260 10,0 -10,0" transform="rotate(330)"/>
+                </g>
+            </svg>
+        </div>
         <div id="item-drop-card">
             <div id="drop-new">item dropped</div>
             <div id="drop-rarity"></div>
@@ -792,9 +919,9 @@ const ctx    = canvas.getContext('2d');
 
 let portfolio = 1000, bestValue = 1000, sessionPnl = 0;
 let isHolding = false, entryPrice = 0, holdTicks = 0;
-let leverage = 1.8; // base leverage — TURBO upgrade modifies this per-trade
+let leverage = 1.5; // reduced from 1.8 — less amplification
 let price = 0.5, vel = 0, momentum = 0;
-let baseVol = 0.009, vol = baseVol;
+let baseVol = 0.014, vol = baseVol; // more volatile market (was 0.009)
 let inCrash = false, crashTick = 0, inBull = false, bullTick = 0;
 let history = [], activeEvent = false, eventCountdown = 0;
 
@@ -816,7 +943,7 @@ let liquidated = false;
 
 // Danger zone
 let dangerZone = false, dangerTicks = 0;
-const DANGER_GRACE = 100; // ~1.6s to react before auto-liquidation
+const DANGER_GRACE = 70; // ~1.15s to react before auto-liquidation (was 100)
 
 // Particles & achievements
 let particles = [];
@@ -941,7 +1068,7 @@ const EVENTS = [
 
 function resetGame() {
     portfolio = 1000; sessionPnl = 0; isHolding = false; holdTicks = 0;
-    leverage = 1.8;
+    leverage = 1.5;
     price = 0.5; vel = 0; momentum = 0; vol = baseVol;
     inCrash = false; inBull = false; history = []; activeEvent = false; liquidated = false;
     particles = []; achDisplay = null;
@@ -968,7 +1095,7 @@ function tick() {
     if (inCrash) { vel += -0.003 + (Math.random()-0.65)*0.006; crashTick--; if (!crashTick) { inCrash=false; vol=baseVol; } }
     if (inBull)  { vel += 0.002  + (Math.random()-0.35)*0.004; bullTick--;  if (!bullTick)  inBull=false; }
 
-    if (!activeEvent && !inCrash && !inBull && Math.random() < 0.0028) triggerEvent();
+    if (!activeEvent && !inCrash && !inBull && Math.random() < 0.0045) triggerEvent(); // more frequent events (was 0.0028)
 
     vel   = vel*0.87 + shock + revert + momentum;
     vel   = Math.max(-0.06, Math.min(0.06, vel));
@@ -984,7 +1111,8 @@ function tick() {
     if (isHolding) {
         holdTicks++;
         const raw = (price - entryPrice) / entryPrice * portfolio * leverage;
-        const holdCost = upg.freehold > 0 ? 0 : (holdTicks / 60) * portfolio * 0.0002;
+        // Holding fee: 0.05%/s (was 0.02%) — staying in too long bleeds real money
+        const holdCost = upg.freehold > 0 ? 0 : (holdTicks / 60) * portfolio * holdFeePct();
         sessionPnl = raw - holdCost;
         updateUI();
         // Danger zone threshold — SAFETY NET upgrade pushes it to 60%
@@ -1034,6 +1162,8 @@ function triggerEvent() {
         vel += e.impact; inCrash = true; crashTick = e.dur; vol = baseVol * (e.vm || 3);
         titleEl.style.color = '#ff3b5c';
         flash('rgba(255,59,92,0.07)'); vib([80,40,80,40,180]); SFX.playCrash();
+        // If holding during crash and survive (not liquidated) — tracked in endHold
+        if (isHolding) missionState._inCrash = true;
     } else if (e.type === 'pump') {
         vel += e.impact; inBull = true; bullTick = e.dur;
         titleEl.style.color = '#00e87a';
@@ -1069,41 +1199,6 @@ function draw() {
         ctx.beginPath(); ctx.moveTo(0, toY(l)); ctx.lineTo(W, toY(l)); ctx.stroke();
     });
 
-    // ── SMA 20 (blue dotted) ────────────────────────────────────────────────
-    if (history.length >= 20) {
-        ctx.save();
-        ctx.setLineDash([3, 7]);
-        ctx.strokeStyle = 'rgba(100, 160, 255, 0.30)';
-        ctx.lineWidth   = 1;
-        ctx.beginPath();
-        for (let i = 19; i < history.length; i++) {
-            let sum = 0; for (let j = i - 19; j <= i; j++) sum += history[j];
-            const x = i / (history.length - 1) * W;
-            const y = toY(sum / 20);
-            i === 19 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    // ── WMA 14 (amber dotted overlay) ───────────────────────────────────────
-    if (history.length >= 14) {
-        const wma = calcWMA(history, 14);
-        ctx.save();
-        ctx.setLineDash([2, 6]);
-        ctx.strokeStyle = 'rgba(255, 175, 50, 0.38)';
-        ctx.lineWidth   = 1;
-        ctx.beginPath();
-        let wmaStarted = false;
-        for (let i = 0; i < history.length; i++) {
-            if (wma[i] === null) continue;
-            const x = i / (history.length - 1) * W;
-            const y = toY(wma[i]);
-            if (!wmaStarted) { ctx.moveTo(x, y); wmaStarted = true; } else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        ctx.restore();
-    }
 
     const UP = '#00e87a', DN = '#ff3b5c';
     const lc = isHolding ? (price >= entryPrice ? UP : DN) : 'rgba(255,255,255,0.68)';
@@ -1147,12 +1242,6 @@ function draw() {
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.font = '10px -apple-system,sans-serif';
     ctx.textAlign = 'right'; ctx.fillText((price * 1000).toFixed(1), W - 10, dy - 9);
 
-    // Indicator legend (top-left of main chart)
-    ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(100,160,255,0.28)';
-    ctx.font = '8px -apple-system,sans-serif';
-    ctx.fillText('SMA', 6, 14);
-    ctx.fillStyle = 'rgba(255,175,50,0.38)';
-    ctx.fillText('WMA', 30, 14);
 
     // ── Divider ──────────────────────────────────────────────────────────────
     ctx.setLineDash([]);
@@ -1381,6 +1470,16 @@ function updateUI() {
     sEl.textContent = isHolding ? 'holding' : 'watching';
     sEl.className   = isHolding ? (sessionPnl>=0?'holding':'loss') : '';
     if (total > bestValue) { bestValue=total; document.getElementById('best-badge').textContent=`Best: ${fmt(bestValue)}`; }
+    // Show current market conditions in hint
+    const hEl = document.getElementById('hint');
+    if (!isHolding) {
+        const lev = effectiveLeverage();
+        const sp  = Math.round(entrySpreadPct() * 100);
+        const fee = Math.round(holdFeePct() * 100 * 10) / 10;
+        hEl.textContent = `${lev}x lev · ${sp}% spread · ${fee}%/s fee`;
+    } else {
+        hEl.textContent = 'release to sell';
+    }
     updateUpgPills();
 }
 
@@ -1388,7 +1487,7 @@ function updateUI() {
 function triggerLiquidation() {
     liquidated = true;
     isHolding  = false;
-    upg.safety = false; leverage = 1.8;
+    upg.safety = false; leverage = 1.5;
     const loss = Math.max(sessionPnl, -(portfolio * 0.65));
     portfolio  = Math.max(10, portfolio + loss);
     sessionPnl = 0;
@@ -1402,6 +1501,8 @@ function triggerLiquidation() {
     titleEl.style.color = '#ff3b5c';
     subEl.textContent   = 'Position liquidated';
     document.getElementById('event').classList.add('visible');
+    // Liquidation breaks the no-liquidation streak mission
+    if (missionState.progress['noliqs']) { missionState.progress['noliqs'] = 0; saveMissionState(); renderDailyMissions(); }
     setTimeout(() => { liquidated = false; }, 500);
     setTimeout(() => { document.getElementById('event').classList.remove('visible'); }, 2000);
     updateUI();
@@ -1424,6 +1525,7 @@ function checkAchievements(pnl, base) {
     if (!best) return;
     if (best.fw) spawnFireworks(best, bestIdx, pnl);
     else         showAchLabel(best, pnl);
+    missionEvent('achievement', best.label);
 }
 
 function showAchLabel(a, pnl) {
@@ -1462,11 +1564,37 @@ function spawnFireworks(a, idx, pnl) {
     if (idx >= 3) tryDrop(idx, pnl);
 }
 
+// Dynamic difficulty scaling — leverage and spread tighten as portfolio grows
+function effectiveLeverage() {
+    if (portfolio < 5000)   return 1.5;
+    if (portfolio < 25000)  return 1.2;
+    if (portfolio < 100000) return 0.9;
+    if (portfolio < 400000) return 0.6;
+    return 0.4;
+}
+function entrySpreadPct() {
+    if (portfolio < 5000)   return 0.01;
+    if (portfolio < 25000)  return 0.03;
+    if (portfolio < 100000) return 0.07;
+    if (portfolio < 400000) return 0.15;
+    return 0.25;
+}
+function holdFeePct() {
+    if (portfolio < 5000)   return 0.0005;
+    if (portfolio < 25000)  return 0.001;
+    if (portfolio < 100000) return 0.002;
+    if (portfolio < 400000) return 0.004;
+    return 0.008;
+}
+
 function startHold() {
     if (isHolding || liquidated) return;
     // Apply TURBO — upgrades leverage for this trade only
     if (upg.turbo) { leverage = 3.0; upg.turbo = false; updateUpgPills(); }
-    else leverage = 1.8;
+    else leverage = effectiveLeverage();
+    // Entry spread scales with portfolio size — bigger portfolio = bigger toll
+    const spread = upg.freehold > 0 ? 0 : Math.round(portfolio * entrySpreadPct());
+    portfolio = Math.max(10, portfolio - spread);
     isHolding=true; entryPrice=price; sessionPnl=0; holdTicks=0;
     vib(38); SFX.playClick(); updateUI();
 }
@@ -1475,15 +1603,22 @@ function endHold() {
     isHolding = false;
     clearDanger();
     upg.safety = false; // SAFETY NET consumed after each trade
-    leverage = 1.8;
+    // portfolio updates first, then leverage resets for next trade
     const prevPortfolio = portfolio;
     portfolio += sessionPnl; portfolio = Math.max(10, portfolio);
+    leverage = effectiveLeverage(); // recalculate for next trade based on new portfolio
     if (sessionPnl > 0) {
         SFX.playProfit(); vib([22, 12, 65]);
         checkAchievements(sessionPnl, prevPortfolio);
+        missionEvent('profit_trades');
+        missionEvent('single_pnl', sessionPnl);
+        missionEvent('hold_secs', holdTicks / 60);
     } else if (sessionPnl < -5) {
         SFX.playLoss(); vib(sessionPnl < -20 ? [240] : [110]);
     }
+    missionEvent('no_liq_trades');
+    missionEvent('portfolio', portfolio);
+    if (missionState._inCrash) { missionEvent('survive_crash'); missionState._inCrash = false; }
     sessionPnl = 0; holdTicks = 0; updateUI(); renderShop();
 }
 
@@ -1578,7 +1713,14 @@ const NAMED_PATTERNS = {
     'Infinity':        [0,0.88, 0.35,0.86, 0.55,0.82, 0.68,0.74, 0.78,0.60, 0.86,0.42, 0.92,0.22, 0.97,0.08, 1,0.02],
 };
 
-let collection = JSON.parse(localStorage.getItem('hold_collection') || '[]');
+let collection = (() => {
+    const raw = JSON.parse(localStorage.getItem('hold_collection') || '[]');
+    // Deduplicate by name — keep first (most recent) of each, save back if changed
+    const seen = new Set();
+    const clean = raw.filter(item => { if (seen.has(item.name)) return false; seen.add(item.name); return true; });
+    if (clean.length !== raw.length) localStorage.setItem('hold_collection', JSON.stringify(clean));
+    return clean;
+})();
 let pendingDrop = null; // item waiting to be collected
 
 function saveCollection() {
@@ -1640,7 +1782,7 @@ function drawMiniPattern(cvs, name, color) {
 
 // ── Drop overlay ──────────────────────────────────────────────────────────────
 function showItemDrop(item) {
-    if (!gameActive) return; // went back to menu
+    if (!gameActive) return;
     const rar  = RARITIES.find(r => r.id === item.rarity);
     const drop = document.getElementById('item-drop');
     document.getElementById('drop-rarity').textContent  = rar.label;
@@ -1648,12 +1790,14 @@ function showItemDrop(item) {
     document.getElementById('drop-name').textContent    = item.name;
     document.getElementById('drop-name').style.color    = rar.color;
     document.getElementById('drop-pnl').textContent     = `+${fmt(item.pnl)} · GOD MODE`;
+    // Color the rays to match the item rarity
+    document.getElementById('drop-rays-g').style.fill   = rar.color;
     const mini = document.getElementById('drop-mini');
-    drop.style.background = `radial-gradient(ellipse at center, ${rar.color}0a 0%, transparent 70%)`;
     drop.classList.add('visible');
-    // Draw after visible so layout is settled
     requestAnimationFrame(() => drawMiniPattern(mini, item.name, rar.color));
     vib([30, 20, 60, 20, 100]);
+    // Pause the game while card is on screen
+    gameActive = false;
 }
 
 document.getElementById('item-drop').addEventListener('click', () => {
@@ -1664,6 +1808,8 @@ document.getElementById('item-drop').addEventListener('click', () => {
     pendingDrop = null;
     document.getElementById('item-drop').classList.remove('visible');
     updateColDot();
+    // Resume game
+    gameActive = true;
 });
 
 // ── Collection screen ─────────────────────────────────────────────────────────
@@ -1687,7 +1833,7 @@ function renderCollection() {
     count.textContent   = `${collection.length} item${collection.length>1?'s':''}`;
     grid.innerHTML = collection.map((item, i) => {
         const rar = RARITIES.find(r => r.id === item.rarity);
-        return `<div class="col-card ${item.rarity}" style="border-color:${rar.color}18" onclick="openCardDetail(${i})">
+        return `<div class="col-card ${item.rarity}" style="border-color:${rar.color}18" data-idx="${i}">
             <div class="col-card-glow" style="background:${rar.color}"></div>
             <div class="col-card-rarity" style="color:${rar.color}">${rar.label}</div>
             <div class="col-card-name" style="color:${rar.color}">${item.name}</div>
@@ -1700,6 +1846,18 @@ function renderCollection() {
         drawMiniPattern(cvs, cvs.dataset.name, cvs.dataset.col);
     });
 }
+
+// Grid touch/click delegation — one handler, no inline onclick
+const colGrid = document.getElementById('col-grid');
+function handleCardTap(e) {
+    const card = e.target.closest('.col-card');
+    if (!card) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openCardDetail(parseInt(card.dataset.idx));
+}
+colGrid.addEventListener('touchend', handleCardTap, { passive: false });
+colGrid.addEventListener('click',    handleCardTap);
 
 const ITEM_DESC = {
     // Common
@@ -1754,10 +1912,28 @@ function openCardDetail(i) {
     vib(18);
 }
 
+function closeCardDetail() {
+    document.getElementById('card-detail').classList.remove('open');
+}
+
+// Inner panel — stop ALL touch/click events from bleeding through to cards below
+document.getElementById('card-detail-inner').addEventListener('click',    e => e.stopPropagation());
+document.getElementById('card-detail-inner').addEventListener('touchend', e => e.stopPropagation());
+
+// Backdrop tap → close
 document.getElementById('card-detail').addEventListener('click', e => {
-    if (e.target === document.getElementById('card-detail') || e.target === document.getElementById('det-close')) {
-        document.getElementById('card-detail').classList.remove('open');
-    }
+    if (e.target === document.getElementById('card-detail')) closeCardDetail();
+});
+
+// Close button — stopPropagation so the tap doesn't hit a card behind it
+document.getElementById('det-close').addEventListener('touchend', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeCardDetail();
+});
+document.getElementById('det-close').addEventListener('click', e => {
+    e.stopPropagation();
+    closeCardDetail();
 });
 
 document.getElementById('col-btn').addEventListener('click', () => {
@@ -1795,6 +1971,7 @@ function buyUpgrade(id) {
     updateUI(); renderShop(); updateUpgPills();
     vib([20, 10, 40]);
     if (soundOn) SFX.playClick();
+    missionEvent('use_upgrade');
 }
 
 function updateUpgPills() {
@@ -1848,6 +2025,181 @@ function closeShop() {
 
 document.getElementById('shop-btn').addEventListener('click', openShop);
 document.getElementById('shop-close-btn').addEventListener('click', closeShop);
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  DAILY MISSIONS
+// ══════════════════════════════════════════════════════════════════════════════
+const MISSION_POOL = [
+    // ── Trades ────────────────────────────────────────────────────────────────
+    { id:'trades10',    label:'Close 10 profitable trades today',              type:'profit_trades',  target:10  },
+    { id:'trades15',    label:'Close 15 profitable trades today',              type:'profit_trades',  target:15  },
+    // ── Single-trade earnings ─────────────────────────────────────────────────
+    { id:'earn5k',      label:'Earn $5,000 in a single trade',                type:'single_pnl',    target:5000  },
+    { id:'earn15k',     label:'Earn $15,000 in a single trade',               type:'single_pnl',    target:15000 },
+    { id:'earn50k',     label:'Earn $50,000 in a single trade',               type:'single_pnl',    target:50000 },
+    // ── Achievements ──────────────────────────────────────────────────────────
+    { id:'legendary',   label:'Earn a LEGENDARY trade or better',             type:'achievement',   target:'LEGENDARY'},
+    { id:'insane',      label:'Earn an INSANE trade or better',               type:'achievement',   target:'INSANE'   },
+    { id:'godmode',     label:'Earn a GOD MODE trade',                        type:'achievement',   target:'GOD MODE' },
+    // ── Survival ──────────────────────────────────────────────────────────────
+    { id:'survive3',    label:'Survive 3 crashes while holding',              type:'survive_crash', target:3  },
+    { id:'noliqs12',    label:'Complete 12 trades without liquidation',       type:'no_liq_trades', target:12 },
+    { id:'noliqs20',    label:'Complete 20 trades without liquidation',       type:'no_liq_trades', target:20 },
+    // ── Upgrades ──────────────────────────────────────────────────────────────
+    { id:'useupgrade3', label:'Use 3 upgrades today',                         type:'use_upgrade',   target:3  },
+    // ── Hold duration ─────────────────────────────────────────────────────────
+    { id:'hold60',      label:'Survive a 60-second hold without liquidation', type:'hold_secs',     target:60 },
+    { id:'hold120',     label:'Survive a 2-minute hold without liquidation',  type:'hold_secs',     target:120},
+    // ── Portfolio ─────────────────────────────────────────────────────────────
+    { id:'port10k',     label:'Grow your portfolio above $10,000',            type:'portfolio',     target:10000 },
+    { id:'port50k',     label:'Grow your portfolio above $50,000',            type:'portfolio',     target:50000 },
+    { id:'port100k',    label:'Grow your portfolio above $100,000',           type:'portfolio',     target:100000},
+];
+
+// Seeded RNG for deterministic daily selection (same 3 missions for everyone)
+function dailySeed() {
+    const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth()+1) * 100 + d.getDate();
+}
+function seededRand(seed) {
+    let s = seed;
+    return function() { s = (s ^ (s << 13)) >>> 0; s = (s ^ (s >> 7)) >>> 0; s = (s ^ (s << 17)) >>> 0; return s / 0xFFFFFFFF; };
+}
+function getDailyMissions() {
+    const rng  = seededRand(dailySeed());
+    const pool = [...MISSION_POOL]; const chosen = [];
+    while (chosen.length < 3 && pool.length) {
+        const i = Math.floor(rng() * pool.length);
+        chosen.push(pool.splice(i, 1)[0]);
+    }
+    return chosen;
+}
+
+// ── Progress persistence ──────────────────────────────────────────────────────
+function loadMissionState() {
+    const saved = JSON.parse(localStorage.getItem('hold_daily') || '{}');
+    if (saved.seed !== dailySeed()) {
+        // New day — reset progress
+        return { seed: dailySeed(), progress: {}, rewarded: false };
+    }
+    return saved;
+}
+let missionState = loadMissionState();
+const dailyMissions = getDailyMissions();
+
+function saveMissionState() { localStorage.setItem('hold_daily', JSON.stringify(missionState)); }
+
+function getMissionProgress(m) { return missionState.progress[m.id] || 0; }
+function isMissionDone(m)      { return getMissionProgress(m) >= m.target; }
+function allMissionsDone()     { return dailyMissions.every(isMissionDone); }
+
+// ── Progress updates (called from game events) ────────────────────────────────
+let _toastTimer = null;
+function showMissionToast(m, justCompleted) {
+    if (!gameActive) return;
+    const el    = document.getElementById('mission-toast');
+    const label = document.getElementById('mission-toast-label');
+    const text  = document.getElementById('mission-toast-text');
+    const prog  = getMissionProgress(m);
+    if (justCompleted) {
+        label.textContent = 'mission complete';
+        text.textContent  = m.label;
+        el.className = 'complete';
+        vib([20, 10, 40, 10, 60]);
+    } else {
+        label.textContent = 'mission progress';
+        const pct = Math.round(prog / m.target * 100);
+        text.textContent  = m.target === 1 ? m.label : `${m.label} — ${prog}/${m.target}`;
+        el.className = '';
+    }
+    el.classList.add('show');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), justCompleted ? 3200 : 2000);
+}
+
+function missionEvent(type, value) {
+    let changed = false;
+    dailyMissions.forEach(m => {
+        if (isMissionDone(m)) return;
+        const prevProg = getMissionProgress(m);
+        if (m.type === type) {
+            if (type === 'achievement') {
+                const order = ['GOOD','GREAT','AWESOME','LEGENDARY','INSANE','GOD MODE'];
+                if (order.indexOf(value) >= order.indexOf(m.target)) {
+                    missionState.progress[m.id] = m.target; changed = true;
+                }
+            } else if (type === 'portfolio') {
+                if (value >= m.target) { missionState.progress[m.id] = m.target; changed = true; }
+            } else {
+                missionState.progress[m.id] = Math.min(m.target, prevProg + (value || 1));
+                changed = true;
+            }
+            if (changed) {
+                const nowDone = isMissionDone(m);
+                showMissionToast(m, nowDone);
+            }
+        }
+    });
+    if (changed) { saveMissionState(); updateDailyDot(); renderDailyMissions(); checkMissionReward(); }
+}
+
+// ── Reward: guaranteed RARE+ item drop ───────────────────────────────────────
+function checkMissionReward() {
+    if (!allMissionsDone() || missionState.rewarded) return;
+    missionState.rewarded = true; saveMissionState();
+    // Queue a guaranteed RARE+ drop on next GOD MODE / INSANE — flag it
+    missionState.bonusDrop = true; saveMissionState();
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function updateDailyDot() {
+    const hasNew = dailyMissions.some(m => !isMissionDone(m));
+    const allDone = allMissionsDone();
+    document.getElementById('daily-btn-dot').classList.toggle('show', allDone || hasNew);
+}
+
+function msToMidnight() {
+    const now = new Date(); const midnight = new Date(now); midnight.setHours(24,0,0,0);
+    const ms = midnight - now; const h = Math.floor(ms/3600000), mn = Math.floor((ms%3600000)/60000);
+    return `${h}h ${mn}m`;
+}
+
+function renderDailyMissions() {
+    const el = document.getElementById('daily-missions');
+    const rewardsEl = document.getElementById('daily-all-done');
+    el.innerHTML = dailyMissions.map(m => {
+        const prog  = getMissionProgress(m);
+        const done  = isMissionDone(m);
+        const pct   = Math.min(100, Math.round(prog / m.target * 100));
+        const progText = m.target === 1 ? (done ? 'done' : '0 / 1') : `${prog} / ${m.target}`;
+        return `<div class="mission-card ${done ? 'done' : ''}">
+            <div class="mission-progress-bar" style="width:${pct}%"></div>
+            <div class="mission-top">
+                <div class="mission-label">${m.label}</div>
+                <div class="mission-check">✓</div>
+            </div>
+            <div class="mission-bottom">
+                <div class="mission-prog-text">${progText}</div>
+                <div class="mission-reward">+ item drop</div>
+            </div>
+        </div>`;
+    }).join('');
+    rewardsEl.style.display = allMissionsDone() ? 'block' : 'none';
+    document.getElementById('daily-resets').textContent = `resets in ${msToMidnight()}`;
+}
+
+const dailyEl = document.getElementById('daily');
+document.getElementById('daily-btn').addEventListener('click', () => {
+    menuEl.classList.add('hidden');
+    renderDailyMissions();
+    setTimeout(() => dailyEl.classList.remove('hidden'), 80);
+});
+document.getElementById('daily-back').addEventListener('click', () => {
+    dailyEl.classList.add('hidden');
+    setTimeout(() => menuEl.classList.remove('hidden'), 80);
+});
+
+updateDailyDot();
+
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
 let gameActive = false;
