@@ -354,6 +354,53 @@
         #det-close:active { color: #666; }
 
 
+        /* ══ STREAK ══════════════════════════════════════════════════════════ */
+        #menu-streak {
+            font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+            color: #1e1e1e; margin-bottom: 40px; display: flex; align-items: center; gap: 8px;
+        }
+        #menu-streak.active { color: #804000; }
+        #streak-num { font-size: 22px; font-weight: 100; color: #ff8c00; letter-spacing: -0.02em; }
+        #streak-label { font-size: 9px; color: #3a3a3a; letter-spacing: 0.14em; }
+
+        /* ══ SHOP TABS ════════════════════════════════════════════════════════ */
+        #shop-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid #111; }
+        .shop-tab {
+            font-size: 8px; letter-spacing: 0.28em; text-transform: uppercase;
+            color: #282828; cursor: pointer; padding: 8px 14px 8px 0;
+            border-bottom: 1px solid transparent; margin-bottom: -1px;
+            transition: color 0.2s;
+        }
+        .shop-tab.active { color: #aaa; border-bottom-color: #333; }
+
+        /* ══ PERMA UPGRADES ═══════════════════════════════════════════════════ */
+        #perma-items { margin-top: 4px; }
+        .perm-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid #0d0d0d;
+            transition: opacity 0.2s;
+        }
+        .perm-row.locked { opacity: 0.28; pointer-events: none; }
+        .perm-tier-dot {
+            width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+            background: #1e1e1e;
+        }
+        .perm-tier-dot.t1 { background: #2a4a2a; }
+        .perm-tier-dot.t2 { background: #4a3a0a; }
+        .perm-tier-dot.t3 { background: #3a0a4a; }
+        .perm-info { flex: 1; min-width: 0; }
+        .perm-name { font-size: 11px; letter-spacing: 0.04em; color: #bbb; margin-bottom: 2px; }
+        .perm-tag  { font-size: 9px; color: #2e2e2e; letter-spacing: 0.08em; }
+        .perm-lock { font-size: 8px; color: #1a1a1a; margin-top: 3px; letter-spacing: 0.06em; }
+        .perm-btn  {
+            font-size: 8px; letter-spacing: 0.10em; text-transform: uppercase;
+            color: #2a2a2a; border: 1px solid #191919; padding: 7px 10px;
+            border-radius: 2px; cursor: pointer; white-space: nowrap;
+            transition: color 0.2s, border-color 0.2s; background: none;
+        }
+        .perm-btn.afford { color: #5a9040; border-color: #2a3e22; }
+        .perm-btn.owned  { color: #00e87a; border-color: #0a2a16; pointer-events: none; }
+
         /* ══ MISSION TOAST (in-game) ═════════════════════════════════════════ */
         #mission-toast {
             position: absolute; left: 50%; top: 88px;
@@ -425,6 +472,11 @@
     <div id="tagline">the minimalist market</div>
     <div id="menu-best">Best: $1,000</div>
 
+    <div id="menu-streak">
+        <span id="streak-num">0</span>
+        <span id="streak-label">day streak</span>
+    </div>
+
     <div id="start-wrap">
         <canvas id="ring-canvas" width="108" height="108"></canvas>
         <div id="start-inner">
@@ -445,7 +497,7 @@
     <div id="menu-links">
         <div id="how-to-btn"  class="menu-link">how to play</div>
         <div id="daily-btn"   class="menu-link">daily <span id="daily-btn-dot"></span></div>
-        <div id="col-btn"     class="menu-link">collection <span id="col-btn-dot"></span></div>
+        <div id="col-btn"     class="menu-link">collection <span id="col-btn-dot"></span><span id="col-prog" style="font-size:8px;color:#222;letter-spacing:0.1em;margin-left:6px;"></span></div>
     </div>
 </div>
 
@@ -457,7 +509,7 @@
         <div id="daily-missions"></div>
         <div id="daily-all-done">
             <div id="daily-all-done-title">all done</div>
-            <div id="daily-all-done-sub">come back tomorrow for new missions</div>
+            <div id="daily-all-done-sub">2× item drop chance unlocked for tomorrow</div>
         </div>
         <div id="daily-resets"></div>
     </div>
@@ -593,8 +645,12 @@
         </div>
     </div>
     <div id="shop-panel">
-        <div id="shop-head">upgrades</div>
+        <div id="shop-tabs">
+            <div class="shop-tab active" data-tab="active">active</div>
+            <div class="shop-tab" data-tab="perma">permanent</div>
+        </div>
         <div id="shop-items"></div>
+        <div id="perma-items" style="display:none"></div>
         <div id="shop-close-btn">close</div>
     </div>
     <div id="danger-bar"></div>
@@ -895,6 +951,7 @@ document.getElementById('back-btn').addEventListener('click', () => {
     setTimeout(() => {
         menuEl.classList.remove('hidden');
         document.getElementById('menu-best').textContent = `Best: ${fmt(bestValue)}`;
+        renderMenuMeta();
     }, 580);
 });
 
@@ -924,6 +981,47 @@ let price = 0.5, vel = 0, momentum = 0;
 let baseVol = 0.014, vol = baseVol; // more volatile market (was 0.009)
 let inCrash = false, crashTick = 0, inBull = false, bullTick = 0;
 let history = [], activeEvent = false, eventCountdown = 0;
+
+// ── Streak ────────────────────────────────────────────────────────────────────
+function loadStreak() {
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const last = localStorage.getItem('holdLastPlayed') || '';
+    let s = parseInt(localStorage.getItem('holdStreak') || '0');
+    if (last === today) return s; // already counted today
+    if (last === yesterday) s++; else s = 1; // consecutive or reset
+    localStorage.setItem('holdStreak', s);
+    localStorage.setItem('holdLastPlayed', today);
+    return s;
+}
+let currentStreak = loadStreak();
+function renderStreak() {
+    const numEl = document.getElementById('streak-num');
+    const wrap  = document.getElementById('menu-streak');
+    if (!numEl) return;
+    numEl.textContent = currentStreak;
+    wrap.classList.toggle('active', currentStreak >= 2);
+}
+
+// ── Permanent Upgrades ────────────────────────────────────────────────────────
+const PERM_UPGRADES = [
+    // Tier 1 — always available
+    { id: 'coolhead',   tier: 1, name: 'Cool Head',   tag: 'danger zone triggers 20% later',   cost: 1500,  req: [] },
+    { id: 'ghost',      tier: 1, name: 'Ghost Line',  tag: 'entry price line always visible',   cost: 2500,  req: [] },
+    // Tier 2 — requires one T1
+    { id: 'ironfee',    tier: 2, name: 'Iron Fee',    tag: 'holding fee reduced 30%',           cost: 6000,  req: ['coolhead'] },
+    { id: 'thinspread', tier: 2, name: 'Thin Spread', tag: 'entry spread reduced 25%',          cost: 9000,  req: ['ghost'] },
+    // Tier 3 — requires both T2
+    { id: 'deeppocket', tier: 3, name: 'Deep Pockets',tag: '+0.15 leverage at low tiers',       cost: 20000, req: ['ironfee', 'thinspread'] },
+];
+function loadPermUpg() {
+    try { return new Set(JSON.parse(localStorage.getItem('holdPermUpg') || '[]')); }
+    catch { return new Set(); }
+}
+function savePermUpg() { localStorage.setItem('holdPermUpg', JSON.stringify([...permUpg])); }
+let permUpg = loadPermUpg();
+function hasPermUpg(id) { return permUpg.has(id); }
+function permUnlocked(u) { return u.req.every(r => permUpg.has(r)); }
 
 // ── Upgrades ──────────────────────────────────────────────────────────────────
 // Costs = max(minCost, portfolio * pct) — always a meaningful fraction of wealth
@@ -1116,7 +1214,7 @@ function tick() {
         sessionPnl = raw - holdCost;
         updateUI();
         // Danger zone threshold — SAFETY NET upgrade pushes it to 60%
-        const dangerThresh = upg.safety ? 0.60 : 0.45;
+        const dangerThresh = upg.safety ? 0.60 : dangerThreshBase();
         if (!liquidated && !dangerZone && sessionPnl < -(portfolio * dangerThresh)) {
             dangerZone = true; dangerTicks = 0;
             document.getElementById('game').classList.add('danger');
@@ -1566,25 +1664,32 @@ function spawnFireworks(a, idx, pnl) {
 
 // Dynamic difficulty scaling — leverage and spread tighten as portfolio grows
 function effectiveLeverage() {
-    if (portfolio < 5000)   return 1.5;
-    if (portfolio < 25000)  return 1.2;
+    const bonus = hasPermUpg('deeppocket') ? 0.15 : 0;
+    if (portfolio < 5000)   return 1.5 + bonus;
+    if (portfolio < 25000)  return 1.2 + bonus;
     if (portfolio < 100000) return 0.9;
     if (portfolio < 400000) return 0.6;
     return 0.4;
 }
 function entrySpreadPct() {
-    if (portfolio < 5000)   return 0.01;
-    if (portfolio < 25000)  return 0.03;
-    if (portfolio < 100000) return 0.07;
-    if (portfolio < 400000) return 0.15;
-    return 0.25;
+    const mult = hasPermUpg('thinspread') ? 0.75 : 1;
+    if (portfolio < 5000)   return 0.01 * mult;
+    if (portfolio < 25000)  return 0.03 * mult;
+    if (portfolio < 100000) return 0.07 * mult;
+    if (portfolio < 400000) return 0.15 * mult;
+    return 0.25 * mult;
 }
 function holdFeePct() {
-    if (portfolio < 5000)   return 0.0005;
-    if (portfolio < 25000)  return 0.001;
-    if (portfolio < 100000) return 0.002;
-    if (portfolio < 400000) return 0.004;
-    return 0.008;
+    const mult = hasPermUpg('ironfee') ? 0.70 : 1;
+    if (portfolio < 5000)   return 0.0005 * mult;
+    if (portfolio < 25000)  return 0.001  * mult;
+    if (portfolio < 100000) return 0.002  * mult;
+    if (portfolio < 400000) return 0.004  * mult;
+    return 0.008 * mult;
+}
+function dangerThreshBase() {
+    // coolhead perm upgrade pushes danger zone 20% deeper
+    return hasPermUpg('coolhead') ? 0.54 : 0.45;
 }
 
 function startHold() {
@@ -1744,7 +1849,8 @@ function rollItem(rarityId) {
 function tryDrop(achIdx, pnl) {
     const table = DROP_TABLE[achIdx];
     if (!table) return;
-    if (Math.random() > DROP_CHANCE[achIdx]) return;
+    const bonusMult = hasMissionDropBonus() ? 2 : 1;
+    if (Math.random() > DROP_CHANCE[achIdx] * bonusMult) return;
     // Try rarities in order until we find one with unowned items
     const shuffled = [...table].sort(() => Math.random() - 0.5);
     let name = null, rarityId = null;
@@ -1808,6 +1914,9 @@ document.getElementById('item-drop').addEventListener('click', () => {
     pendingDrop = null;
     document.getElementById('item-drop').classList.remove('visible');
     updateColDot();
+    // Update collection progress in menu
+    const progEl = document.getElementById('col-prog');
+    if (progEl) progEl.textContent = `${collection.length}/25`;
     // Resume game
     gameActive = true;
 });
@@ -2014,9 +2123,57 @@ function renderShop() {
     if (shopBtn) shopBtn.classList.toggle('glow', anyAffordable);
 }
 
+function renderPermaShop() {
+    const el = document.getElementById('perma-items');
+    if (!el) return;
+    const tierColors = { 1: 't1', 2: 't2', 3: 't3' };
+    el.innerHTML = PERM_UPGRADES.map(u => {
+        const owned    = hasPermUpg(u.id);
+        const unlocked = permUnlocked(u);
+        const canAfford = portfolio >= u.cost && !owned && unlocked;
+        const btnClass  = owned ? 'owned' : canAfford ? 'afford' : '';
+        const btnText   = owned ? 'owned' : fmt(u.cost);
+        const lockText  = (!owned && !unlocked)
+            ? `unlock: ${u.req.map(r => PERM_UPGRADES.find(x => x.id === r)?.name || r).join(' + ')}`
+            : '';
+        return `<div class="perm-row ${(!owned && !unlocked) ? 'locked' : ''}">
+          <div class="perm-tier-dot ${tierColors[u.tier]}"></div>
+          <div class="perm-info">
+            <div class="perm-name">${u.name}</div>
+            <div class="perm-tag">${u.tag}</div>
+            ${lockText ? `<div class="perm-lock">${lockText}</div>` : ''}
+          </div>
+          <button class="perm-btn ${btnClass}" onclick="buyPermUpgrade('${u.id}')" ${(owned||!unlocked)?'disabled':''}>${btnText}</button>
+        </div>`;
+    }).join('');
+}
+
+function buyPermUpgrade(id) {
+    const u = PERM_UPGRADES.find(x => x.id === id);
+    if (!u || hasPermUpg(u.id) || !permUnlocked(u) || portfolio < u.cost) return;
+    portfolio -= u.cost;
+    permUpg.add(id);
+    savePermUpg();
+    vib([20, 10, 60]);
+    SFX.playClick();
+    updateUI();
+    renderPermaShop();
+    renderShop();
+}
+
+let _shopTab = 'active';
+function switchShopTab(tab) {
+    _shopTab = tab;
+    document.querySelectorAll('.shop-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('shop-items').style.display    = tab === 'active' ? '' : 'none';
+    document.getElementById('perma-items').style.display   = tab === 'perma'  ? '' : 'none';
+    if (tab === 'perma') renderPermaShop();
+}
+
 function openShop() {
     if (isHolding) return;
     renderShop();
+    switchShopTab(_shopTab);
     document.getElementById('shop-panel').classList.add('open');
 }
 function closeShop() {
@@ -2025,6 +2182,10 @@ function closeShop() {
 
 document.getElementById('shop-btn').addEventListener('click', openShop);
 document.getElementById('shop-close-btn').addEventListener('click', closeShop);
+document.getElementById('shop-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.shop-tab');
+    if (tab) switchShopTab(tab.dataset.tab);
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  DAILY MISSIONS
@@ -2142,12 +2303,18 @@ function missionEvent(type, value) {
     if (changed) { saveMissionState(); updateDailyDot(); renderDailyMissions(); checkMissionReward(); }
 }
 
-// ── Reward: guaranteed RARE+ item drop ───────────────────────────────────────
+// ── Reward: 2× item drop chance next day ─────────────────────────────────────
 function checkMissionReward() {
     if (!allMissionsDone() || missionState.rewarded) return;
-    missionState.rewarded = true; saveMissionState();
-    // Queue a guaranteed RARE+ drop on next GOD MODE / INSANE — flag it
-    missionState.bonusDrop = true; saveMissionState();
+    missionState.rewarded = true;
+    // Store tomorrow's date as the bonus day
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    localStorage.setItem('holdDropBonusDay', tomorrow);
+    saveMissionState();
+}
+function hasMissionDropBonus() {
+    const today = new Date().toISOString().slice(0, 10);
+    return localStorage.getItem('holdDropBonusDay') === today;
 }
 
 // ── UI ────────────────────────────────────────────────────────────────────────
@@ -2200,6 +2367,26 @@ document.getElementById('daily-back').addEventListener('click', () => {
 
 updateDailyDot();
 
+// ── Menu meta (streak + collection progress) ─────────────────────────────────
+function renderMenuMeta() {
+    renderStreak();
+    const total = 25;
+    const owned = collection.length;
+    const progEl = document.getElementById('col-prog');
+    if (progEl) progEl.textContent = owned > 0 ? `${owned}/${total}` : '';
+    // Show bonus day indicator in daily missions if active
+    const allDoneEl = document.getElementById('daily-all-done-sub');
+    if (allDoneEl) {
+        if (hasMissionDropBonus()) {
+            allDoneEl.textContent = '2× drop active today!';
+            allDoneEl.style.color = '#ff8c00';
+        } else if (allMissionsDone()) {
+            allDoneEl.textContent = '2× item drop chance unlocked for tomorrow';
+            allDoneEl.style.color = '';
+        }
+    }
+}
+renderMenuMeta();
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
 let gameActive = false;
