@@ -14,6 +14,29 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <style>
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+        <script>
+// PARMAĞI KALDIRMADAN AÇILMAYI ENGELLEYEN KOD
+document.addEventListener('touchmove', function(e) {
+    // Parmağın hareket ettiği mesafeyi kontrol et
+    if (e.touches.length > 0) {
+        // Hareket başladığı anda oyunun içindeki "tıklama/açılma" olaylarını sustur
+        e.stopPropagation(); 
+    }
+}, {passive: false, capture: true});
+
+// Sadece parmağını ekrana dokunup (hareket ettirmeden) çektiğinde çalışması için:
+document.addEventListener('touchstart', function(e) {
+    window.lastTouchY = e.touches[0].pageY;
+}, {passive: true});
+
+document.addEventListener('touchend', function(e) {
+    let diffY = Math.abs(e.changedTouches[0].pageY - window.lastTouchY);
+    if (diffY > 10) { // 10 pikselden fazla kaydırdıysan her şeyi iptal et
+        e.stopImmediatePropagation();
+    }
+}, true);
+</script>
+
 
         body {
             background: #080808;
