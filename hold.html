@@ -75,33 +75,53 @@ let isMoving = false;
 
 function renderCollection() {
     colGrid.innerHTML = '';
+    
+    // KOLEKSİYON DÖNGÜSÜ
     for (let i = 1; i <= 25; i++) {
+        const item = items.find(it => it.id === i);
         const div = document.createElement('div');
         div.className = 'col-item' + (collection.includes(i) ? '' : ' locked');
-        div.textContent = collection.includes(i) ? '💎' : '?';
         
-        // KAYDIRMA KONTROLÜ BURADA:
-        div.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].pageY;
-            isMoving = false;
-        }, {passive: true});
+        if (collection.includes(i) && item) {
+            div.textContent = item.icon;
+            
+            // BURASI KRİTİK: Mevcut onclick'i tamamen iptal ediyoruz
+            div.onclick = null; 
 
-        div.addEventListener('touchmove', (e) => {
-            if (Math.abs(e.touches[0].pageY - startY) > 10) {
-                isMoving = true; // Eğer 10px'den fazla kaydıysa "hareket ediyor" say
-            }
-        }, {passive: true});
+            // SADECE parmağını koyup HİÇ hareket ettirmeden kaldırırsan açılacak
+            let startX, startY;
 
-        div.addEventListener('touchend', () => {
-            if (!isMoving) {
-                // Sadece kaydırma yapmıyorken (dokunup bırakınca) açılır
-                if (collection.includes(i)) alert("Item " + i + " Details");
-            }
-        });
-        
+            div.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                div.dataset.maybeClick = "true"; // Tıklama ihtimalini başlat
+            }, {passive: true});
+
+            div.addEventListener('touchmove', (e) => {
+                let moveX = e.touches[0].clientX;
+                let moveY = e.touches[0].clientY;
+                
+                // Eğer parmak 5 piksel bile oynarsa tıklama ihtimalini hemen öldür
+                if (Math.abs(moveX - startX) > 5 || Math.abs(moveY - startY) > 5) {
+                    div.dataset.maybeClick = "false";
+                }
+            }, {passive: true});
+
+            div.addEventListener('touchend', (e) => {
+                // Eğer parmak hiç kaymadıysa ve hala "true" kalabildiyse aç
+                if (div.dataset.maybeClick === "true") {
+                    showDetails(item);
+                }
+                div.dataset.maybeClick = "false";
+            });
+
+        } else {
+            div.textContent = '?';
+        }
         colGrid.appendChild(div);
     }
 }
+
 
 document.getElementById('col-btn').addEventListener('click', () => {
     menuEl.classList.add('hidden');
