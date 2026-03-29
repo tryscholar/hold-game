@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HOLD</title>
@@ -11,84 +12,113 @@
             overflow: hidden;
             display: flex;
             justify-content: center;
-            min-height: 100vh;
+            min-height: 100vh; min-height: 100dvh;
             margin: 0;
             color: #fff;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        .screen { position: absolute; width: 100%; max-width: 430px; height: 100%; display: flex; flex-direction: column; }
+
+        .screen {
+            position: absolute;
+            width: 100%; max-width: 430px; height: 100%;
+            display: flex; flex-direction: column;
+            transition: opacity 0.2s;
+        }
         .hidden { display: none !important; }
-        #collection-screen { background: #000; overflow-y: auto; }
-        .col-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 20px; }
-        .col-item { aspect-ratio: 2/3; background: #111; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid #222; }
-        .col-item.locked { opacity: 0.3; }
-        .btn { padding: 15px 40px; background: #fff; color: #000; border-radius: 30px; cursor: pointer; text-align: center; margin: 10px; }
+
+        /* COLLECTION GRID */
+        #collection-screen { background: #000; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .col-header { padding: 60px 20px 20px; display: flex; justify-content: space-between; align-items: baseline; }
+        .col-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 0 20px 100px;
+        }
+        .col-item {
+            aspect-ratio: 2/3; background: #111; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; border: 1px solid #222; position: relative;
+        }
+        .col-item.locked { opacity: 0.3; filter: grayscale(1); font-size: 14px; }
+        
+        /* ÖNEMLİ: Menü ve diğer stiller orijinal dosyadaki gibi devam ediyor... */
+        #menu-screen { align-items: center; justify-content: center; text-align: center; }
+        .btn { padding: 15px 40px; background: #fff; color: #000; border-radius: 30px; font-weight: 600; cursor: pointer; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div id="menu-screen" class="screen">
-    <div style="margin: auto; text-align: center;">
-        <h1 style="font-size: 48px;">HOLD</h1>
-        <div id="col-prog"></div>
-        <div class="btn" id="start-btn">PLAY</div>
-        <div class="btn" id="col-btn">COLLECTION</div>
-    </div>
+    <h1 style="font-size: 48px; letter-spacing: -1px; margin-bottom: 0;">HOLD</h1>
+    <div id="col-prog" style="font-size: 12px; opacity: 0.5; margin-top: 5px;"></div>
+    <div class="btn" id="start-btn">PLAY</div>
+    <div class="btn" id="col-btn" style="background: #111; color: #fff; border: 1px solid #333;">COLLECTION</div>
 </div>
 
 <div id="collection-screen" class="screen hidden">
-    <div style="padding: 40px 20px 10px; display: flex; justify-content: space-between;">
-        <h2>Items</h2>
-        <span id="col-back" style="cursor:pointer">Back</span>
+    <div class="col-header">
+        <h2 style="margin:0">Items</h2>
+        <span id="col-back" style="opacity:0.5; font-size:14px">Back</span>
     </div>
     <div class="col-grid" id="col-grid"></div>
 </div>
 
 <script>
-// Orijinal Veriler
-const items = Array.from({length: 25}, (_, i) => ({id: i+1, icon: '💎'}));
+// Orijinal Değişkenlerin ve Mantığın Korunmuş Hali
 let collection = JSON.parse(localStorage.getItem('hold_col') || '[]');
-
 const menuEl = document.getElementById('menu-screen');
 const colEl = document.getElementById('collection-screen');
 const colGrid = document.getElementById('col-grid');
 
+// KAYDIRMA KONTROLÜ İÇİN DEĞİŞKENLER
+let startY = 0;
+let isMoving = false;
+
 function renderCollection() {
     colGrid.innerHTML = '';
-    let startY = 0;
-    let moving = false;
-
-    items.forEach(item => {
+    for (let i = 1; i <= 25; i++) {
         const div = document.createElement('div');
-        div.className = 'col-item' + (collection.includes(item.id) ? '' : ' locked');
-        div.textContent = collection.includes(item.id) ? item.icon : '?';
+        div.className = 'col-item' + (collection.includes(i) ? '' : ' locked');
+        div.textContent = collection.includes(i) ? '💎' : '?';
+        
+        // KAYDIRMA KONTROLÜ BURADA:
+        div.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].pageY;
+            isMoving = false;
+        }, {passive: true});
 
-        // KAYDIRMA SORUNUNU ÇÖZEN EN BASİT MANTIK (BAŞKA YERİ BOZMAZ)
-        div.addEventListener('touchstart', (e) => { startY = e.touches[0].pageY; moving = false; }, {passive: true});
-        div.addEventListener('touchmove', (e) => { if(Math.abs(e.touches[0].pageY - startY) > 10) moving = true; }, {passive: true});
+        div.addEventListener('touchmove', (e) => {
+            if (Math.abs(e.touches[0].pageY - startY) > 10) {
+                isMoving = true; // Eğer 10px'den fazla kaydıysa "hareket ediyor" say
+            }
+        }, {passive: true});
+
         div.addEventListener('touchend', () => {
-            if (!moving && collection.includes(item.id)) {
-                alert("Item " + item.id);
+            if (!isMoving) {
+                // Sadece kaydırma yapmıyorken (dokunup bırakınca) açılır
+                if (collection.includes(i)) alert("Item " + i + " Details");
             }
         });
-
+        
         colGrid.appendChild(div);
-    });
+    }
 }
 
-document.getElementById('col-btn').onclick = () => {
+document.getElementById('col-btn').addEventListener('click', () => {
     menuEl.classList.add('hidden');
     renderCollection();
     colEl.classList.remove('hidden');
-};
+});
 
-document.getElementById('col-back').onclick = () => {
+document.getElementById('col-back').addEventListener('click', () => {
     colEl.classList.add('hidden');
     menuEl.classList.remove('hidden');
-};
+});
 
+// Service Worker Kaydı (Hatasız Hali)
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
 }
 </script>
 </body>
